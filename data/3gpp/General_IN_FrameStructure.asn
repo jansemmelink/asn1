@@ -1,0 +1,366 @@
+
+
+General_IN_FrameStructure
+
+DEFINITIONS
+IMPLICIT TAGS ::=
+
+BEGIN
+
+-- EXPORTS not specified, thus export all
+
+--Revision History
+-- 1 Nov 2002
+--		- Changed DEFAULT fields to OPTIONAL
+--			The reason for this is that version 5.30 of Objective
+--			Systems ASN.1 compiler does not handle DEFAULT correctly.
+-- 9 Jan 2003
+--		- Changed payloadData to PayloadData in several places
+
+--===============================================================
+-- Define generic carrier structure
+--===============================================================
+Frame {PAYLOADTYPESCLASS:User-payloads} ::= [APPLICATION 0] SEQUENCE {
+	version		[0]	INTEGER				OPTIONAL,	-- DEFAULT 1,
+	destSubSystem	[1]	INTEGER	(0..maxSubSystem, ...!1),
+	sourceSubSystem	[2]	INTEGER	(0..maxSubSystem, ...!1),
+	sourceContext	[3]	INTEGER	(0..maxContext, ...!2) 	OPTIONAL,
+	destContext	[4]	INTEGER	(0..maxContext, ...!2) 	OPTIONAL,	 -- DEFAULT 0,
+	messageClass	[5]	MessageClasses,
+	seqNumber	[6]	INTEGER	(0..maxSeqNumber, ...!3)	OPTIONAL,
+	timeStamp	[7]	INTEGER,
+	processTime	[8]	INTEGER	(0..maxProcessTime, ...!4) 	OPTIONAL,
+	priority		[9]	INTEGER	(0..maxPriority)		OPTIONAL,	-- DEFAULT 64,
+	timeOut		[10]	INTEGER	(0..maxProcessTime, ...!5) 	OPTIONAL,
+	addText		[11]	IA5String (SIZE(0..maxAddTextLength))	OPTIONAL,
+	payload		[12]	PayloadTypes {User-payloads},
+	... !6
+}
+
+PAYLOADTYPESCLASS	::= CLASS {
+	&payloadID	INTEGER (0..maxPayloadID, ...)	UNIQUE,
+	&PayloadData
+}
+
+PayloadTypes {PAYLOADTYPESCLASS:User-payloads} ::= SEQUENCE {
+	payloadID			PAYLOADTYPESCLASS.&payloadID
+					({User-payloads} ),
+	payloadData			PAYLOADTYPESCLASS.&PayloadData
+					({User-payloads} {@payloadID} )
+}
+
+MessageClasses	::= ENUMERATED {
+	fatalerror,			-- Error occured, deleting context
+	minorerror,		-- Error occurred, but trying to recover
+	unidirectional,		-- No reponse required
+	initialRequest,		-- Create a new context and expect a response back
+	followUpRequest,		-- Follow-on query in an existing context, expect a response back
+	intermediateResponse,	-- More responses will follow
+	finalResponse,		-- This is the last response, but more requests can follow
+	disconnectResponse	-- The context can be deleted
+--	... ! 7
+}
+
+FieldType		::= SEQUENCE {
+	fieldId	[0]	IA5String		(SIZE(0..maxFieldNameLength)),
+	data	[1] 	ANY		OPTIONAL
+}
+
+
+--===============================================================
+-- Define generic error payload
+--===============================================================
+genericErrorPayload PAYLOADTYPESCLASS	::= {
+	&payloadID	0	,
+	&PayloadData 	GenericError 	}
+
+GenericError ::= [PRIVATE 0] SEQUENCE {
+	errorType			[0]	ErrorTypes,
+	uniqueErrorCode		[1]	INTEGER			OPTIONAL,
+	errorLocationData		[2]	FieldType			OPTIONAL,
+	expectedData		[3]	FieldType			OPTIONAL,
+	expectedLength		[4]	INTEGER			OPTIONAL,
+	errorMessage		[5]	IA5String (SIZE(0..1024)) 	OPTIONAL,
+	additionalText		[6]	IA5String (SIZE(0..1024)) 	OPTIONAL
+}
+
+ErrorTypes ::= ENUMERATED {
+	decodingError,			-- Use if unable to decode (typically data too short)
+	missingMandatoryField,
+	unknownAdditionalField,		-- Possible version incompatibility
+	valueOutOfBounds,
+	unknownEnumerationValue,
+	fieldTooLong,
+	unsupportedVersion,
+	unsupportedSubSystem,
+	outOfSequence,			-- Used if the sequence numbers does not follow correctly
+	notAuthenticated,			-- Used if an initial request is received, not addressed
+--   to the link control subsystem, while the link is not
+--   authenticated or if the encryption check fails.
+	userDefinedErrorType
+--	, 	...!8
+}
+
+--===============================================================
+-- Define payloads for use in Link Control SubSystem
+--===============================================================
+-- Define messages that compose subsystem
+LinkControlSubSystem PayloadTypes ::= { 	connectionDisconnectPayload 	|
+					connectionRequestPayload 		|
+					connectionAcceptPayload 		|
+					connectionChallengePayload 		|
+					connectionReChallangePayload	}
+					 
+
+-- Define Individual Message Types
+connectionDisconnectPayload PAYLOADTYPESCLASS	::=  {
+	&payloadID		1,
+	&PayloadData 	 	ConnectionDisconnect
+}
+
+connectionRequestPayload PAYLOADTYPESCLASS	::= {
+	&payloadID		2,
+	&PayloadData		ConnectionRequest
+}
+
+connectionAcceptPayload PAYLOADTYPESCLASS	::= {
+	&payloadID		3,
+	&PayloadData		ConnectionAccept
+}
+
+connectionChallengePayload PAYLOADTYPESCLASS	::= {
+	&payloadID		4,
+	&PayloadData		ConnectionChallenge
+}
+
+connectionReChallangePayload 	PAYLOADTYPESCLASS	::= {
+	&payloadID		5,
+	&PayloadData		ConnectionReChallange
+}
+
+
+-- Define the payloads for each message
+ConnectionDisconnect ::= [PRIVATE 1] SEQUENCE {
+	reasonForDisconnect	[0]	DisconnectionReasons,
+	additionalInformation	[1]	IA5String (SIZE(0..maxAddTextLength)) 	OPTIONAL
+}
+
+ConnectionRequest ::= [PRIVATE 2] SEQUENCE {
+	timeStampForChallenge	[0]	ChallengeType,
+	encryptedTimeStamp	[1]	ChallengeResponseType,
+	challengeToOtherParty	[2]	ChallengeType
+}
+
+ConnectionAccept ::= [PRIVATE 3] SEQUENCE {
+	replyToChallenge		[0]	ChallengeResponseType
+}
+
+ConnectionChallenge ::= [PRIVATE 4] SEQUENCE {
+	challengeToOtherParty	[0]	ChallengeType
+}
+
+ConnectionReChallange ::= [PRIVATE 5] SEQUENCE {
+	replyToChallenge		[0]	ChallengeResponseType,
+	challengeToOtherParty	[1]	ChallengeType
+}
+
+
+DisconnectionReasons ::= ENUMERATED {
+	applicationGoingDown,		-- Used during a controlled disconnect
+	connectionNotRequired,		-- Used if connection is not required any more
+	authenticationTimeout,		-- Used if authentication was not completed timeously
+	authenticationError,			-- Used if authentication failed
+	unrecoverableError,			-- Used if error conditions occurred, that makes
+					--   connect unusable
+	unsupportedPayloadType		-- Used if the subsystem does not recognise the
+					--   payload type
+--	... !8
+}
+
+ChallengeType 	::=	OCTET STRING (SIZE(0..16)) 	-- 128 bit raw input
+
+ChallengeResponseType ::= SEQUENCE {
+	data		[0]	OCTET STRING 	(SIZE(0..16)),	-- 128 bit encrypted value
+	encryptionMethod	[1]	EncryptionMethods,
+	username		[2]	IA5String 		(SIZE(0..maxUsernameLength))
+}
+
+EncryptionMethods ::= ENUMERATED {
+	rsa,
+	des,
+	rijndael
+--	...!9
+}
+
+
+--===============================================================
+-- Define message payload
+--===============================================================
+messagePayload PAYLOADTYPESCLASS ::= {
+  &payloadID  6 ,
+  &PayloadData  MessageTypes {User-messages}  }
+
+MESSAGETYPESCLASS ::= CLASS {
+  &msgID          INTEGER UNIQUE,
+  &encodingRule   INTEGER,
+  &MsgParameter
+}
+
+MessageTypes {MESSAGETYPESCLASS:User-messages} ::= [PRIVATE 6] SEQUENCE {
+  msgID         MESSAGETYPESCLASS.&msgID
+                ({User-messages} ),
+  encodingRule  MESSAGETYPESCLASS.&encodingRule,
+  msgParameter  MESSAGETYPESCLASS.&MsgParameter
+                ({User-messages} {@msgID} )
+}
+
+--===============================================================
+-- Define Get message payload
+--===============================================================
+getMessage MESSAGETYPESCLASS ::= {
+  &msgID  30,
+  &MsgParameter  Get-Msg  }
+
+Get-Msg ::= [PRIVATE 30] SEQUENCE {
+  msisdn        [0] MSISDN-AddressString,
+  index_blocks  [1] INTEGER,
+  indices       [2] OCTET STRING,
+  get_tid       [3] IA5String,
+  char_string   [4] IA5String (SIZE (0..128))
+}
+
+--===============================================================
+-- Define GetAck message payload
+--===============================================================
+getackMessage MESSAGETYPESCLASS ::= {
+  &msgID  31,
+  &MsgParameter  GetAck-Msg  }
+
+GetAck-Msg ::= [PRIVATE 31] SEQUENCE {
+  msisdn        [0] MSISDN-AddressString,
+  indices       [1] OCTET STRING,
+  varvalues     [2] IA5String,
+  get_tid       [4] IA5String
+}
+
+--===============================================================
+-- Define GetNack message payload
+--===============================================================
+getnackMessage MESSAGETYPESCLASS ::= {
+  &msgID  32,
+  &MsgParameter  GetNack-Msg  }
+
+GetNack-Msg ::= [PRIVATE 32] SEQUENCE {
+  scp_error      [0] INTEGER,
+  last_index     [1] INTEGER,
+  get_tid       [2] IA5String
+}
+
+--===============================================================
+-- Define Set message payload
+--===============================================================
+setMessage MESSAGETYPESCLASS ::= {
+  &msgID  33,
+  &MsgParameter  Set-Msg  }
+
+Set-Msg ::= [PRIVATE 33] SEQUENCE {
+  msisdn              [0] MSISDN-AddressString,
+  index_blocks        [1] INTEGER,
+  indices             [2] OCTET STRING,
+  condition_blocks    [3] INTEGER,
+  conditionfields     [4] OCTET STRING,
+  modefields          [5] OCTET STRING,
+  modification_blocks [6] INTEGER,
+  modification_values [7] OCTET STRING,
+  set_tid             [8] IA5String,
+  char_string         [9] IA5String (SIZE (0..128))
+}
+
+--===============================================================
+-- Define SetAck message payload
+--===============================================================
+setackMessage MESSAGETYPESCLASS ::= {
+  &msgID  34,
+  &MsgParameter  SetAck-Msg  }
+
+SetAck-Msg ::= [PRIVATE 34] SEQUENCE {
+  msisdn              [0] MSISDN-AddressString,
+  indices             [1] OCTET STRING,
+  originalvalues      [2] IA5String,
+  varvalues           [3] IA5String,
+  set_tid             [4] IA5String
+}
+
+--===============================================================
+-- Define SetNack message payload
+--===============================================================
+setnackMessage MESSAGETYPESCLASS ::= {
+  &msgID  35,
+  &MsgParameter  SetNack-Msg  }
+
+SetNack-Msg ::= [PRIVATE 35] SEQUENCE {
+  scp_error           [0] INTEGER,
+  failedcond1         [1] OCTET STRING,
+  failedcond2         [2] OCTET STRING,
+  failedcondconst     [3] OCTET STRING,
+  failedcondoperand   [4] OCTET STRING,
+  varvalues           [5] IA5String,
+  nrmodvalues         [6] INTEGER,
+  set_tid             [7] IA5String
+}
+
+
+--===============================================================
+-- Define Get message payload
+--===============================================================
+--getMessagePayload PAYLOADTYPESCLASS ::= {
+--  &payloadID  6 ,
+--  &PayloadData  GetMessage  }
+--
+--GetMessage ::= [PRIVATE 6] SEQUENCE {
+--  msisdn        [0] MSISDN-AddressString,
+--  index_blocks  [1] INTEGER,
+--  indices       [3] INTEGER,
+--  get_tid       [4] IA5String,
+--  char_string   [5] IA5String (SIZE (0..128))
+--}
+
+
+
+
+--===============================================================
+-- MSISDN-Address
+--===============================================================
+MSISDN-AddressString ::= OCTET STRING (SIZE (1..maxMSISDN-AddressLength))
+maxMSISDN-AddressLength INTEGER ::= 15
+
+--===============================================================
+-- Define boundaries
+--===============================================================
+maxSubSystem		INTEGER ::= 32768		-- 15 bits
+maxContext		INTEGER ::= 2147483648	-- 31 bits
+maxSeqNumber		INTEGER ::= 32768		-- 15 bits
+maxProcessTime		INTEGER ::= 2147483648	-- 31 bits	(24 days, since units are in ms)
+maxUsernameLength	INTEGER ::= 50
+maxPayloadID		INTEGER ::= 32768		-- 15 bits
+maxPriority		INTEGER ::= 127		--  7 bits
+maxAddTextLength		INTEGER ::= 1024
+maxFieldNameLength	INTEGER ::= 100
+
+
+--===============================================================
+-- Exception handling
+--===============================================================
+--!1	Respond with unsupportedSubSystem Generic Error Message
+--!2	Respond with valueOutOfBounds Generic Error Message
+--!3	Respond with valueOutOfBounds Generic Error Message
+--!4	Silently ignore or Respond with valueOutOfBounds Generic Error Message
+--!5	Treat as maximum
+--!6	Respond with unknownAdditionalField Generic Error Message
+--!7	Respond with unknownEnumerationValue Generic Error Message
+--!8	Silently ignore
+--!9	Respond with unknownEnumerationValue Generic Error Message
+--===============================================================
+END
+
+ 

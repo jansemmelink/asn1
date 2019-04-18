@@ -1,0 +1,42 @@
+MAP-SupplementaryServiceOperations { ccitt identified-organization (4) etsi (0) mobileDomain (0) gsm-Network (1) modules (3) map-SupplementaryServiceOperations (8) version1 (1)}
+
+DEFINITIONS IMPLICIT TAGS ::=
+
+BEGIN
+
+IMPORTS 
+        OPERATION
+FROM Remote-Operations-Information-Objects ros-InformationObjects
+;
+
+beginSubscriberActivity OPERATION ::= {
+	ARGUMENT		BeginSubscriberActivityArg
+	RETURN RESULT		FALSE
+	ERRORS {
+		missingParameter
+	}
+	CODE			opcode-beginSubscriberActivity
+}
+
+processUnstructuredSS-Data OPERATION ::= {
+	ARGUMENT		SS-UserData
+	RETURN RESULT		FALSE
+        ERRORS {
+                missingParameter
+        }
+	CODE			opcode-processUnstructuredSS-Data
+}
+
+BeginSubscriberActivityArg ::= SEQUENCE {
+    imsi                             IMSI,
+    originatingEntityNumber          ISDN-AddressString
+}
+
+SS-UserData ::= IA5String (SIZE (1.. maxSignalInfoLength))
+
+maxSignalInfoLength INTEGER ::= 200
+
+opcode-beginSubscriberActivity Code ::= 54
+opcode-processUnstructuredSS-Data Code ::= 19
+
+END

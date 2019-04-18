@@ -1,0 +1,882 @@
+CAP-gsmSSF-gsmSCF-ops-args {itu-t(0) identified-organization(4) etsi(0) mobileDomain(0) umts-network(1) modules(3) cap-gsmSSF-gsmSCF-ops-args(101) version5(4)}
+
+DEFINITIONS IMPLICIT TAGS ::= 
+BEGIN
+  IMPORTS
+    OPERATION
+  FROM
+    Remote-Operations-Information-Objects ros-InformationObjects
+
+    BCSMEvent,
+    numOfBCSMEvents,
+    numOfSMSEvents,
+    HighLayerCompatibility,
+    RedirectionInformation,
+    ServiceKey
+  FROM
+    IN-CS-1-Datatypes {itu-t(0) identified-organization(4) etsi(0) inDomain(1) in-network(1) modules(0) cs1-datatypes(2) version1(0)}
+  
+    EXTENSION,
+    PARAMETERS-BOUND,
+    SupportedExtensions
+  FROM
+    CAP-classes classes
+  
+    ISDN-AddressString
+  FROM 
+    MAP-CommonDataTypes MAP-DialogueInformation
+  ;
+  
+  AChChargingAddress {PARAMETERS-BOUND : bound} ::= CHOICE {
+    legID        [2] LegID,
+    srfConnection            [50] CallSegmentID
+  }
+  
+  AppendFreeFormatData ::= ENUMERATED {
+    overwrite  (0),
+    append    (1)
+  }
+  
+  AudibleIndicator ::= CHOICE {
+    tone              BOOLEAN,
+    burstList            [1] BurstList
+  }
+  
+  Burst ::= SEQUENCE {
+    numberOfBursts            [0]  INTEGER (1..3)    DEFAULT 1,
+    burstInterval            [1]  INTEGER  (1..1200)  DEFAULT 2,            
+    numberOfTonesInBurst          [2] INTEGER (1..3)    DEFAULT 3,
+    toneDuration            [3]  INTEGER  (1..20)    DEFAULT 2,
+    toneInterval            [4]  INTEGER  (1..20)    DEFAULT 2,
+    ...
+  }
+  -- burstInterval, toneDurartion and toneInterval are measured in 100 millisecond units
+  
+  BurstList ::= SEQUENCE {
+    warningPeriod            [0] INTEGER  (1..1200) DEFAULT 30,
+    bursts              [1] Burst,
+    ...
+  }
+  -- warningPeriod is measured in 1 second units.
+  
+  Cause ::= OCTET STRING (SIZE(minCauseLength .. maxCauseLength))
+  -- Indicates the cause for interface related information.
+  -- Refer to ETSI EN 300 356-1 [23] Cause parameter for encoding.
+  -- For the use of cause and location values refer to ITU-T Recommendation Q.850 [47]
+  -- Shall always include the cause value and shall also include the diagnostics field,
+  -- if available.
+  
+  CriticalityType ::= ENUMERATED {
+    ignore          (0),
+    abort          (1)
+  }
+  
+  DateAndTime ::= OCTET STRING (SIZE(7))
+  --  DateAndTime is BCD encoded. The year digit indicating millenium occupies bits
+  --  0-3 of the first octet, and the year digit indicating century occupies bits
+  --  4-7 of the first octet.
+  --  The year digit indicating decade occupies bits 0-3 of the second octet,
+  --  whilst the digit indicating the year within the decade occupies bits 4-7 of
+  --  the second octet.
+  --  The most significant month digit occupies bits 0-3 of the third octet,
+  --  and the least significant month digit occupies bits 4-7 of the third octet.
+  --  The most significant day digit occupies bits 0-3 of the fourth octet,
+  --  and the least significant day digit occupies bits 4-7 of the fourth octet.
+  --  The most significant hours digit occupies bits 0-3 of the fifth octet,
+  --  and the least significant digit occupies bits 4-7 of the fifth octet.
+  --  The most significant minutes digit occupies bits 0-3 of the sixth octet,
+  --  and the least significant digit occupies bits 4-7 of the sixth octet.
+  --  The most significant seconds digit occupies bits 0-3 of the seventh octet,
+  --  and the least seconds significant digit occupies bits 4-7 of the seventh octet.
+  --  For the encoding of digits in an octet, refer to the timeAndtimezone parameter.
+  
+  Extensions ::= SEQUENCE SIZE (1..numOfExtensions) OF ExtensionField
+  ExtensionField ::= SEQUENCE {
+          type          EXTENSION.&id ({SupportedExtensions}),
+          criticality        CriticalityType DEFAULT ignore,
+          value          [1] EXTENSION.&ExtensionType ({SupportedExtensions}{@type}),
+          ...
+  }
+  
+  RequestedInformationList ::= SEQUENCE SIZE (1.. numOfInfoItems) OF RequestedInformation
+  
+  RequestedInformationTypeList ::= SEQUENCE SIZE (1.. numOfInfoItems) OF RequestedInformationType
+  
+  RequestedInformation ::= SEQUENCE {
+    requestedInformationType      [0] RequestedInformationType,
+    requestedInformationValue      [1] RequestedInformationValue,
+  ...
+  }
+  
+  RequestedInformationType ::= ENUMERATED {
+    callAttemptElapsedTime        (0),
+    callStopTime          (1),
+    callConnectedElapsedTime      (2),
+    releaseCause          (30)
+  }
+  
+  RequestedInformationValue ::= CHOICE {
+    callAttemptElapsedTimeValue      [0] INTEGER (0..255),
+    callStopTimeValue        [1] DateAndTime,
+    callConnectedElapsedTimeValue      [2] Integer4,
+    releaseCauseValue        [30] Cause
+  }
+  -- The callAttemptElapsedTimeValue is specified in seconds. The unit for the
+  -- callConnectedElapsedTimeValue is 100 milliseconds
+  
+  SendingSideID ::= CHOICE {
+    sendingSideID         [0] LegType
+  }
+  -- used to identify LegID in operations sent from gsmSCF to gsmSSF
+  
+  TimeIfNoTariffSwitch ::= INTEGER(0..864000)
+  -- TimeIfNoTariffSwitch is measured in 100 millisecond intervals
+  
+  TimeIfTariffSwitch ::= SEQUENCE {
+    timeSinceTariffSwitch        [0] INTEGER(0..864000),
+    tariffSwitchInterval        [1] INTEGER(1..864000)            OPTIONAL
+  }
+  -- timeSinceTariffSwitch and tariffSwitchInterval are measured in 100 millisecond intervals
+  
+  TimeInformation ::= CHOICE {
+    timeIfNoTariffSwitch        [0] TimeIfNoTariffSwitch,
+    timeIfTariffSwitch        [1] TimeIfTariffSwitch
+  }
+  -- Indicates call duration information
+  
+  
+  TimeAndTimezone ::= OCTET STRING (SIZE(minTimeAndTimezoneLength .. maxTimeAndTimezoneLength))
+  CalledPartyBCDNumber ::= OCTET STRING (SIZE(minCalledPartyBCDNumberLength .. maxCalledPartyBCDNumberLength))
+  ServiceInteractionIndicatorsTwo ::= SEQUENCE {
+          forwardServiceInteractionInd    [0] ForwardServiceInteractionInd  OPTIONAL,
+          backwardServiceInteractionInd    [1] BackwardServiceInteractionInd  OPTIONAL,
+          bothwayThroughConnectionInd    [2] BothwayThroughConnectionInd    OPTIONAL,
+          connectedNumberTreatmentInd    [4] ConnectedNumberTreatmentInd    OPTIONAL,
+          nonCUGCall        [13] NULL        OPTIONAL,
+          holdTreatmentIndicatori      [50] OCTET STRING (SIZE(1))    OPTIONAL,
+          cwTreatmentIndicator      [51] OCTET STRING (SIZE(1))    OPTIONAL,
+          ectTreatmentIndicator      [52] OCTET STRING (SIZE(1))    OPTIONAL,
+          ...
+  } 
+
+  ForwardServiceInteractionInd ::= SEQUENCE {
+          conferenceTreatmentIndicator            [1] OCTET STRING (SIZE(1))    OPTIONAL,
+          callDiversionTreatmentIndicator         [2] OCTET STRING (SIZE(1))    OPTIONAL,
+          callingPartyRestrictionIndicator        [4] OCTET STRING (SIZE(1))    OPTIONAL,
+    ...
+  }
+
+  BackwardServiceInteractionInd ::= SEQUENCE {
+          conferenceTreatmentIndicator    [1] OCTET STRING (SIZE(1))    OPTIONAL,
+          callCompletionTreatmentIndicator  [2] OCTET STRING (SIZE(1))    OPTIONAL,
+          ...
+  }
+
+  ConnectedNumberTreatmentInd ::= ENUMERATED {
+          noINImpact        (0),
+          presentationRestricted      (1),
+          presentCalledINNumber      (2),
+          presentCallINNumberRestricted    (3)
+  }
+
+  BothwayThroughConnectionInd ::= ENUMERATED {
+    bothwayPathRequired      (0), 
+    bothwayPathNotRequired      (1)
+  }
+
+  ReceivingSideID ::= CHOICE {
+          receivingSideID        [1] LegType
+  }
+
+  CallSegmentToCancel ::= SEQUENCE {
+          invokeID        [0] InvokeID        OPTIONAL,
+          callSegmentID                           [1] CallSegmentID      OPTIONAL,
+          ...
+  }
+
+  LowLayerCompatibility ::= OCTET STRING (SIZE (minLowLayerCompatibilityLength .. maxLowLayerCompatibilityLength))
+
+  GenericNumber ::= OCTET STRING (SIZE(minGenericNumberLength .. maxGenericNumberLength))
+
+  GenericNumbers ::= SET SIZE(1 .. numOfGenericNumbers) OF GenericNumber
+
+  OCSIApplicable ::= NULL
+
+  NAOliInfo ::= OCTET STRING (SIZE (1))
+
+  CallSegmentID ::= INTEGER (1 .. numOfCSs)
+  
+  opcode-initialDP                            Code ::= local: 0
+  -- Billing Package
+  opcode-furnishChargingInformation           Code ::= local: 34
+  -- Charging Package
+  opcode-applyCharging                        Code ::= local: 35
+  opcode-applyChargingReport                  Code ::= local: 36
+  -- Call report Package
+  opcode-callInformationReport                Code ::= local: 44
+  opcode-callInformationRequest               Code ::= local: 45
+  -- Cancel Package
+  opcode-cancel                               Code ::= local: 53
+  -- Sms Activation Package
+  opcode-initialDPSMS                         Code ::= local: 60
+  -- Sms Billing Package
+  opcode-furnishChargingInformationSMS        Code ::= local: 61
+  -- Sms Connect Package
+  opcode-connectSMS                           Code ::= local: 62
+  -- Sms Event Handling Package
+  opcode-requestReportSMSEvent                Code ::= local: 63
+  opcode-eventReportSMS                       Code ::= local: 64
+  -- Sms Processing Package
+  opcode-continueSMS                          Code ::= local: 65
+  -- Sms Release Package  
+  opcode-releaseSMS                           Code ::= local: 66
+  -- Sms Timer Package
+  opcode-resetTimerSMS                        Code ::= local: 67
+  
+  
+  minCalledPartyBCDNumberLength  INTEGER ::= 1
+  maxCalledPartyBCDNumberLength  INTEGER ::= 41
+  minTimeAndTimezoneLength  INTEGER ::= 8
+  maxTimeAndTimezoneLength  INTEGER ::= 8
+  minLowLayerCompatibilityLength  INTEGER ::= 1
+  maxLowLayerCompatibilityLength  INTEGER ::= 16
+  minGenericNumberLength    INTEGER ::= 3
+  maxGenericNumberLength    INTEGER ::= 11
+  minAChBillingChargingLength  INTEGER ::= 5
+  maxAChBillingChargingLength  INTEGER ::= 177
+  minFCIBillingChargingLength   INTEGER ::= 1
+  maxFCIBillingChargingLength   INTEGER ::= 160
+  minCallResultLength    INTEGER ::= 12
+  maxCallResultLength    INTEGER ::= 193
+  numOfExtensions     INTEGER ::= 10
+  numOfInfoItems       INTEGER ::= 5
+  numOfGenericNumbers    INTEGER ::= 5
+  numOfCSs      INTEGER ::= 127
+  minCauseLength      INTEGER ::= 2
+  maxCauseLength      INTEGER ::= 32
+  
+  ------------
+  -- initialDP
+  ------------
+  initialDP OPERATION ::= {
+    ARGUMENT    InitialDPArg
+    RETURN RESULT    FALSE
+          ERRORS {
+      missingCustomerRecord |
+      missingParameter |
+      parameterOutOfRange |
+      systemFailure |
+      taskRefused |
+      unexpectedComponentSequence |
+      unexpectedDataValue |
+      unexpectedParameter
+    }
+    CODE      opcode-initialDP
+  }
+  
+  InitialDPArg ::= SEQUENCE {
+    serviceKey        [0] ServiceKey,  
+    calledPartyNumber      [2] CalledPartyNumber      OPTIONAL,
+    callingPartyNumber      [3] CallingPartyNumber      OPTIONAL,
+    callingPartysCategory      [5] CallingPartysCategory    OPTIONAL,
+    cGEncountered        [7] CGEncountered      OPTIONAL,
+    iPSSPCapabilities      [8] IPSSPCapabilities       OPTIONAL,
+    locationNumber        [10] LocationNumber       OPTIONAL,
+    originalCalledPartyID      [12] OriginalCalledPartyID     OPTIONAL,
+    extensions        [15] Extensions       OPTIONAL,
+    highLayerCompatibility      [23] HighLayerCompatibility    OPTIONAL,
+    additionalCallingPartyNumber    [25] AdditionalCallingPartyNumber   OPTIONAL,
+    bearerCapability      [27] BearerCapability       OPTIONAL,
+    eventTypeBCSM        [28] EventTypeBCSM      OPTIONAL,
+    redirectingPartyID      [29] RedirectingPartyID     OPTIONAL,
+    redirectionInformation      [30] RedirectionInformation    OPTIONAL,
+    cause          [17] Cause         OPTIONAL,
+    serviceInteractionIndicatorsTwo    [32] ServiceInteractionIndicatorsTwo  OPTIONAL,
+    carrier          [37] Carrier         OPTIONAL,
+    cug-Index        [45] CUG-Index        OPTIONAL,
+    cug-Interlock        [46] CUG-Interlock      OPTIONAL,
+    cug-OutgoingAccess      [47] NULL        OPTIONAL,
+    iMSI          [50] IMSI        OPTIONAL,
+    subscriberState        [51] SubscriberState      OPTIONAL,
+    locationInformation      [52] LocationInformation    OPTIONAL,
+    ext-basicServiceCode      [53] Ext-BasicServiceCode    OPTIONAL,
+    callReferenceNumber      [54] CallReferenceNumber    OPTIONAL,
+    mscAddress        [55] ISDN-AddressString      OPTIONAL,
+    calledPartyBCDNumber      [56] CalledPartyBCDNumber     OPTIONAL,
+    timeAndTimezone        [57] TimeAndTimezone      OPTIONAL,
+    callForwardingSS-Pending    [58] NULL        OPTIONAL,
+    initialDPArgExtension      [59] InitialDPArgExtension    OPTIONAL,
+    ...
+  }
+  
+  InitialDPArgExtension ::= SEQUENCE {
+          gmscAddress        [0] ISDN-AddressString      OPTIONAL,
+          forwardingDestinationNumber    [1] CalledPartyNumber      OPTIONAL,
+          ms-Classmark2        [2] MS-Classmark2      OPTIONAL,
+          iMEI          [3] IMEI        OPTIONAL,
+          supportedCamelPhases      [4] SupportedCamelPhases    OPTIONAL,
+          offeredCamel4Functionalities    [5] OfferedCamel4Functionalities  OPTIONAL,
+          bearerCapability2      [6] BearerCapability      OPTIONAL,
+          ext-basicServiceCode2      [7] Ext-BasicServiceCode    OPTIONAL,
+          highLayerCompatibility2      [8] HighLayerCompatibility    OPTIONAL,
+          lowLayerCompatibility      [9] LowLayerCompatibility    OPTIONAL,
+          lowLayerCompatibility2      [10] LowLayerCompatibility    OPTIONAL,
+          ...,
+          enhancedDialledServicesAllowed    [11] NULL        OPTIONAL,
+          uu-Data          [12] UU-Data        OPTIONAL,
+          collectInformationAllowed    [13] NULL        OPTIONAL
+  }  
+
+  ----------
+  -- connect
+  ----------
+  connect OPERATION ::= {
+          ARGUMENT    ConnectArg
+          RETURN RESULT    FALSE
+          ERRORS            {
+          missingParameter |
+          parameterOutOfRange |
+          systemFailure |
+          taskRefused |
+          unexpectedComponentSequence |
+          unexpectedDataValue |
+          unexpectedParameter |
+          unknownLegID
+    }
+          CODE      opcode-connect
+  }
+  
+  ConnectArg ::= SEQUENCE {
+          destinationRoutingAddress    [0] DestinationRoutingAddress,
+          alertingPattern                         [1] AlertingPattern      OPTIONAL,
+          originalCalledPartyID                   [6] OriginalCalledPartyID    OPTIONAL,
+          extensions                              [10] Extensions        OPTIONAL,
+          carrier                                 [11] Carrier        OPTIONAL,
+          callingPartysCategory                   [28] CallingPartysCategory    OPTIONAL,
+          redirectingPartyID                      [29] RedirectingPartyID      OPTIONAL,
+          redirectionInformation                  [30] RedirectionInformation    OPTIONAL,
+          genericNumbers                          [14] GenericNumbers      OPTIONAL,
+          serviceInteractionIndicatorsTwo         [15] ServiceInteractionIndicatorsTwo  OPTIONAL,
+          chargeNumber                            [19] ChargeNumber      OPTIONAL,
+          legToBeConnected                        [21] LegID        OPTIONAL,
+          cug-Interlock                           [31] CUG-Interlock      OPTIONAL,
+          cug-OutgoingAccess                      [32] NULL        OPTIONAL,
+          suppressionOfAnnouncement               [55] SuppressionOfAnnouncement    OPTIONAL,
+          oCSIApplicable                          [56] OCSIApplicable      OPTIONAL,
+          naOliInfo                               [57] NAOliInfo        OPTIONAL,
+          bor-InterrogationRequested              [58] NULL        OPTIONAL,
+          ...,
+          suppress-N-CSI                          [59] NULL        OPTIONAL
+  }
+  
+  -------------------------
+  -- requestReportBCSMEvent
+  -------------------------
+  requestReportBCSMEvent OPERATION ::= {
+          ARGUMENT    RequestReportBCSMEventArg
+          RETURN RESULT    FALSE
+    ERRORS            {
+          missingParameter |
+          parameterOutOfRange |
+          systemFailure |
+          taskRefused |
+          unexpectedComponentSequence |
+          unexpectedDataValue |
+          unexpectedParameter |
+          unknownLegID
+    }
+          CODE      opcode-requestReportBCSMEvent
+  }
+  
+  RequestReportBCSMEventArg ::= SEQUENCE {
+     bcsmEvents        [0] SEQUENCE SIZE(1 .. numOfBCSMEvents) OF BCSMEvent,
+          extensions        [2] Extensions        OPTIONAL,
+          ...
+  } 
+  
+  ------------------
+  -- eventReportBCSM
+  ------------------
+  eventReportBCSM OPERATION ::= {
+          ARGUMENT    EventReportBCSMArg
+          RETURN RESULT    FALSE
+          ALWAYS RESPONDS    FALSE
+          CODE                    opcode-eventReportBCSM
+  }
+  
+  EventReportBCSMArg ::= SEQUENCE {
+          eventTypeBCSM        [0] EventTypeBCSM,
+          eventSpecificInformationBCSM    [2] EventSpecificInformationBCSM  OPTIONAL,
+          legID          [3] ReceivingSideID      OPTIONAL,
+          miscCallInfo        [4] MiscCallInfo DEFAULT {messageType request},
+          extensions        [5] Extensions        OPTIONAL,
+          ...
+  }
+  
+  ------------------------------
+  -- furnishChargingInformation
+  ------------------------------
+  furnishChargingInformation OPERATION ::= {
+    ARGUMENT    FurnishChargingInformationArg
+    RETURN RESULT          FALSE
+    ERRORS      {missingParameter |
+           taskRefused |
+           unexpectedComponentSequence |
+           unexpectedDataValue |
+           unexpectedParameter |
+           unknownLegID
+    }
+    CODE      opcode-furnishChargingInformation
+  }
+  
+  FurnishChargingInformationArg ::=
+         FCIBillingChargingCharacteristics
+  
+  FCIBillingChargingCharacteristics ::= OCTET STRING (SIZE(
+    minFCIBillingChargingLength .. maxFCIBillingChargingLength))
+    (CONSTRAINED BY {-- shall be the result of the BER-encoded value of type --
+    CAMEL-FCIBillingChargingCharacteristics {bound}})
+  -- This parameter indicates the billing and/or charging characteristics.
+  -- The violation of the UserDefinedConstraint shall be handled as an ASN.1 syntax error.
+  
+  CAMEL-FCIBillingChargingCharacteristics ::= CHOICE{
+    fCIBCCCAMELsequence1        [0] SEQUENCE {
+      freeFormatData         [0] OCTET STRING (SIZE(1 .. 160)),
+      partyToCharge         [1] SendingSideID DEFAULT sendingSideID: leg1,
+      appendFreeFormatData      [2] AppendFreeFormatData DEFAULT overwrite,
+      ...
+    }
+  }
+  
+  -----------------
+  -- applyCharging
+  -----------------
+  
+  applyCharging OPERATION ::= {
+    ARGUMENT    ApplyChargingArg
+    RETURN RESULT          FALSE
+    ERRORS      {missingParameter |
+            unexpectedComponentSequence |
+            unexpectedParameter |
+            unexpectedDataValue |
+            parameterOutOfRange |
+            systemFailure |
+            taskRefused |
+            unknownLegID |
+            unknownCSID}
+    CODE      opcode-applyCharging}
+  -- Direction: gsmSCF -> gsmSSF, Timer: Tac
+  -- This operation is used for interacting from the gsmSCF with the gsmSSF charging mechanisms.
+  -- The ApplyChargingReport operation provides the feedback from the gsmSSF to the gsmSCF.
+  
+  
+  ApplyChargingArg ::= SEQUENCE {
+    aChBillingChargingCharacteristics  [0] AChBillingChargingCharacteristics,
+    partyToCharge        [2] SendingSideID DEFAULT sendingSideID : leg1,
+    extensions        [3] Extensions            OPTIONAL,
+    aChChargingAddress      [50] AChChargingAddress DEFAULT legID:sendingSideID:leg1,
+    ...
+  }
+  
+  AChBillingChargingCharacteristics ::= OCTET STRING (SIZE
+    (minAChBillingChargingLength .. maxAChBillingChargingLength))
+    (CONSTRAINED BY {-- shall be the result of the BER-encoded value of the type --
+    CAMEL-AChBillingChargingCharacteristics {bound}})
+  -- The AChBillingChargingCharacteristics parameter specifies the charging related information
+  -- to be provided by the gsmSSF and the conditions on which this information has to be reported
+  -- back to the gsmSCF with the ApplyChargingReport operation. The value of the
+  -- AChBillingChargingCharacteristics of type OCTET STRING carries a value of the ASN.1 data type:
+  -- CAMEL-AChBillingChargingCharacteristics. The normal encoding rules are used to encode this
+  -- value.
+  -- The violation of the UserDefinedConstraint shall be handled as an ASN.1 syntax error.
+  
+  CAMEL-AChBillingChargingCharacteristics ::= CHOICE {
+    timeDurationCharging        [0] SEQUENCE {
+      maxCallPeriodDuration        [0] INTEGER (1..864000),
+      releaseIfdurationExceeded      [1] BOOLEAN DEFAULT FALSE,
+      tariffSwitchInterval        [2] INTEGER (1..86400)          OPTIONAL,
+      audibleIndicator        [3] AudibleIndicator DEFAULT tone: FALSE,
+      extensions          [4] Extensions            OPTIONAL,
+      ...
+    }  }
+  -- tariffSwitchInterval is measured in 1 second units.
+  -- maxCallPeriodDuration is measured in 100 millisecond units
+  
+  
+  -----------------------
+  -- applyChargingReport
+  -----------------------
+  
+  applyChargingReport OPERATION ::= {
+    ARGUMENT    ApplyChargingReportArg
+    RETURN RESULT          FALSE
+    ERRORS      {missingParameter |
+            unexpectedComponentSequence |
+            unexpectedParameter |
+            unexpectedDataValue |
+            unknownCSID |
+            unknownLegID |
+            parameterOutOfRange |
+            systemFailure |
+            taskRefused}
+    CODE      opcode-applyChargingReport}
+  -- Direction: gsmSSF -> gsmSCF, Timer: Tacr
+  -- This operation is used by the gsmSSF to report to the gsmSCF the occurrence of a
+  -- specific charging event as requested by the gsmSCF using the ApplyCharging operation.
+  
+  ApplyChargingReportArg ::= CallResult
+  
+  CallResult ::= OCTET STRING (SIZE(
+    minCallResultLength .. maxCallResultLength))
+    (CONSTRAINED BY {-- shall be the result of the BER-encoded value of type -
+    CAMEL-CallResult {bound}})
+  -- The violation of the UserDefinedConstraint shall be handled as an ASN.1 syntax error.
+  
+  CAMEL-CallResult ::= CHOICE {
+    timeDurationChargingResult      [0] SEQUENCE {
+      partyToCharge          [0] ReceivingSideID,
+      timeInformation          [1] TimeInformation,
+      legActive          [2] BOOLEAN DEFAULT TRUE,
+      callLegReleasedAtTcpExpiry      [3] NULL            OPTIONAL,
+      extensions          [4] Extensions            OPTIONAL,
+      aChChargingAddress        [5] AChChargingAddress                                  DEFAULT legID:receivingSideID:leg1,
+      ...
+    }  }
+  
+  -------------------------
+  -- callInformationReport
+  -------------------------
+  
+  callInformationReport {PARAMETERS-BOUND : bound} OPERATION ::= {
+    ARGUMENT    CallInformationReportArg
+    RETURN RESULT    FALSE
+    ALWAYS RESPONDS    FALSE
+    CODE      opcode-callInformationReport}
+  -- Direction: gsmSSF -> gsmSCF, Timer: Tcirp
+  -- This operation is used to send specific call information for a single call party to the gsmSCF as
+  -- requested by the gsmSCF in a previous CallInformationRequest.
+  
+  CallInformationReportArg ::= SEQUENCE {
+    requestedInformationList    [0] RequestedInformationList,
+    extensions        [2] Extensions            OPTIONAL,
+    legID          [3] ReceivingSideID DEFAULT receivingSideID:leg2,
+    ...
+    }
+  
+  -------------------------
+  -- callInformationRequest
+  -------------------------
+  
+  callInformationRequest OPERATION ::= {
+    ARGUMENT    CallInformationRequestArg
+    RETURN RESULT    FALSE
+    ERRORS      {missingParameter |
+            parameterOutOfRange |
+            requestedInfoError |
+            systemFailure |
+            taskRefused |
+            unexpectedComponentSequence |
+            unexpectedDataValue |
+            unexpectedParameter |
+            unknownLegID}
+    CODE      opcode-callInformationRequest}
+    -- Direction: gsmSCF -> gsmSSF, Timer: Tcirq
+    -- This operation is used to request the gsmSSF to record specific information about a single
+    -- call party and report it to the gsmSCF (with a CallInformationReport operation).
+  
+  CallInformationRequestArg::= SEQUENCE {
+    requestedInformationTypeList    [0] RequestedInformationTypeList,
+    extensions        [2] Extensions            OPTIONAL,
+    legID          [3] SendingSideID DEFAULT sendingSideID:leg2,
+    ...
+  }
+
+  -- OPTIONAL denotes network operator optional.
+
+  ----------
+  -- cancel
+  ----------
+  cancel OPERATION ::= {
+    ARGUMENT CancelArg
+    RETURN RESULT FALSE
+    ERRORS {
+      cancelFailed |
+      missingParameter |
+      taskRefused |
+      unknownCSID
+    }
+    CODE opcode-cancel
+  }
+
+  CancelArg ::= CHOICE {
+    invokeID                                [0] InvokeID,
+    allRequests                             [1] NULL,
+    callSegmentToCancel                     [2] CallSegmentToCancel
+  }
+
+
+
+
+  -- items for CAP 3 IDP SMS
+
+  SMS-AddressString ::= AddressString (SIZE (1 .. maxSMS-AddressStringLength))
+  -- This data type is used to transport CallingPartyNumber for MT-SMS.
+  -- If this data type is used for MO-SMS, then the maximum number of digits shall be 16.
+  -- An SMS-AddressString may contain an alphanumeric character string. In this 
+  -- case, a nature of address indicator '101'B is used, in accordance with 
+  -- 3GPP TS 23.040 [6]. The address is coded in accordance with the GSM 7-bit 
+  -- default alphabet definition and the SMS packing rules as specified in 
+  -- 3GPP TS 23.038 [15] in this case.
+  
+  maxSMS-AddressStringLength INTEGER ::= 11
+
+EventSpecificInformationSMS ::= CHOICE {
+  o-smsFailureSpecificInfo      [0] SEQUENCE {
+    failureCause            [0] MO-SMSCause             OPTIONAL,
+    ...
+    },
+  o-smsSubmissionSpecificInfo     [1] SEQUENCE {
+    -- no specific info defined-
+    ...
+    },
+  t-smsFailureSpecificInfo      [2] SEQUENCE {
+    failureCause            [0] MT-SMSCause             OPTIONAL,
+    ...
+    },
+  t-smsDeliverySpecificInfo     [3] SEQUENCE {
+    -- no specific info defined-
+    ...
+    }
+  }
+
+  EventTypeSMS ::= ENUMERATED {
+    sms-CollectedInfo         (1),
+    o-smsFailure            (2),
+    o-smsSubmission           (3),
+    sms-DeliveryRequested       (11),
+    t-smsFailure            (12),
+    t-smsDelivery           (13)
+    }
+  -- Values sms-CollectedInfo and sms-DeliveryRequested may be used for TDPs only.
+
+  TPShortMessageSpecificInfo ::= OCTET STRING (SIZE (1))
+  -- contains the 1st octect of the applicable TPDU or the SMS-COMMAND TPDU as specified in
+  -- 3GPP TS 23.040 [6].
+
+  TPDataCodingScheme ::= OCTET STRING (SIZE (1))
+  -- TP Data Coding Scheme according to 3GPP TS 23.040 [6]
+  
+  TPProtocolIdentifier ::= OCTET STRING (SIZE (1))
+  -- indicates the protocol used above the SM-Transfer Layer as specified in 3GPP TS 23.040 [6].
+  
+  TPValidityPeriod ::= OCTET STRING (SIZE (1..7))
+  -- indicates the length of the validity period or the absolute time of the validity
+  -- period termination as specified in 3GPP TS 23.040 [6].
+  -- the length of ValidityPeriod is either 1 octet or 7 octets
+
+  MO-SMSCause ::= ENUMERATED {
+    systemFailure           (0),
+    unexpectedDataValue         (1),
+    facilityNotSupported        (2),
+    sM-DeliveryFailure          (3),
+    releaseFromRadioInterface     (4)
+    }
+  -- MO SMS error values which are reported to gsmSCF.
+  -- Most of these values are received from the SMSC as a response to
+  -- MO-ForwardSM operation.
+  
+  MT-SMSCause ::= OCTET STRING (SIZE (1))
+  -- This variable is sent to the gsmSCF for a Short Message delivery failure
+  -- notification.
+  -- If the delivery failure is due to RP-ERROR RPDU received from the MS,
+  -- then MT-SMSCause shall be set to the RP-Cause component in the RP-ERROR RPDU.
+  -- Refer to 3GPP TS 24.011 [10] for the encoding of RP-Cause values.
+  -- Otherwise, if the delivery failure is due to internal failure in the MSC or SGSN
+  -- or time-out from the MS, then MT-SMSCause shall be set to 'Protocol error,
+  -- unspecified', as defined in 3GPP TS 24.011 [10].
+
+  connectSMS OPERATION ::= {
+    ARGUMENT      ConnectSMSArg
+    RETURN RESULT FALSE
+    ERRORS {      missingParameter |
+                  parameterOutOfRange |
+                  systemFailure |
+                  taskRefused |
+                  unexpectedComponentSequence |
+                  unexpectedDataValue |
+                  unexpectedParameter}
+    CODE          opcode-connectSMS
+  }
+  --  Direction: gsmSCF -> gsmSSF or gprsSSF, Timer: Tconsms
+  --  This operation is used to request the smsSSF to perform the SMS processing
+  --  actions to route or forward a short message to a specified destination.
+  
+  ConnectSMSArg ::= SEQUENCE {
+    callingPartysNumber         [0] SMS-AddressString             OPTIONAL,
+    destinationSubscriberNumber [1] CalledPartyBCDNumber          OPTIONAL,
+    sMSCAddress                 [2] ISDN-AddressString            OPTIONAL,
+    extensions                  [10] Extensions                   OPTIONAL,
+    ...
+  }
+  
+  continueSMS OPERATION ::= {
+    RETURN RESULT FALSE
+    ALWAYS RESPONDS FALSE
+    CODE      opcode-continueSMS
+  }
+  -- Direction: gsmSCF -> smsSSF, Timer: Tcuesms 
+  -- This operation is used to request the smsSSF to proceed with
+  -- Short Message processing at the DP at which it previously suspended
+  -- Short Message processing to await gsmSCF instructions (i.e. proceed
+  -- to the next Point in Association in the SMS FSM). The smsSSF
+  -- continues SMS processing without substituting new data from the gsmSCF.
+  
+  eventReportSMS OPERATION ::= {
+    ARGUMENT              EventReportSMSArg
+    RETURN RESULT         FALSE
+    ALWAYS RESPONDS       FALSE
+    CODE                  opcode-eventReportSMS
+  }
+  --  Direction: gsmSSF or gprsSSF -> gsmSCF, Timer: Terbsms
+  --  This operation is used to notify the gsmSCF of a Short Message related event (FSM events
+  --  such as submission, delivery or failure) previously requested by the gsmSCF in a
+  --  RequestReportSMSEvent operation.
+  
+  EventReportSMSArg ::= SEQUENCE {
+    eventTypeSMS                    [0] EventTypeSMS,
+    eventSpecificInformationSMS     [1] EventSpecificInformationSMS       OPTIONAL,
+    miscCallInfo                    [2] MiscCallInfo DEFAULT {messageType request},
+    extensions                      [10] Extensions                       OPTIONAL,
+    ...
+  }
+  
+  --furnishChargingInformationSMS OPERATION ::= {
+  --  ARGUMENT    FurnishChargingInformationSMSArg
+  --  RETURN RESULT FALSE
+  --  ERRORS      {missingParameter |
+  --          taskRefused |
+  --          unexpectedComponentSequence |
+  --          unexpectedDataValue |
+  --          unexpectedParameter}
+  --  CODE      opcode-furnishChargingInformationSMS
+  --}
+  --  Direction: gsmSCF ?? gsmSSF or gprsSSF, Timer: Tfcisms 
+  --  This operation is used to request the smsSSF to generate, register a charging record
+  --  or to include some information in the default SM record. The registered charging record is
+  --  intended for off line charging of the Short Message.
+  
+  --FurnishChargingInformationSMSArg ::=
+  --  FCISMSBillingChargingCharacteristics
+
+  initialDPSMS OPERATION ::= {
+    ARGUMENT InitialDPSMSArg
+    RETURN RESULT FALSE
+    ERRORS {
+      missingCustomerRecord |
+      missingParameter |
+      parameterOutOfRange |
+      systemFailure |
+      taskRefused |
+      unexpectedComponentSequence |
+      unexpectedDataValue |
+      unexpectedParameter}
+    CODE opcode-initialDPSMS
+  }
+
+  InitialDPSMSArg ::= SEQUENCE {
+    serviceKey                  [0] ServiceKey,
+    destinationSubscriberNumber [1] CalledPartyBCDNumber          OPTIONAL,
+    callingPartyNumber          [2] SMS-AddressString             OPTIONAL,
+    eventTypeSMS                [3] EventTypeSMS                  OPTIONAL,
+    iMSI                        [4] IMSI                          OPTIONAL,
+    locationInformationMSC      [5] LocationInformation           OPTIONAL,
+    locationInformationGPRS     [6] LocationInformationGPRS       OPTIONAL,
+    sMSCAddress                 [7] ISDN-AddressString            OPTIONAL,
+    timeAndTimezone             [8] TimeAndTimezone               OPTIONAL,
+    tPShortMessageSpecificInfo  [9] TPShortMessageSpecificInfo    OPTIONAL,
+    tPProtocolIdentifier        [10] TPProtocolIdentifier         OPTIONAL,
+    tPDataCodingScheme          [11] TPDataCodingScheme           OPTIONAL,
+    tPValidityPeriod            [12] TPValidityPeriod             OPTIONAL,
+    extensions                  [13] Extensions                   OPTIONAL,
+    ...,
+    smsReferenceNumber          [14] CallReferenceNumber          OPTIONAL,
+    mscAddress                  [15] ISDN-AddressString           OPTIONAL,
+    sgsn-Number                 [16] ISDN-AddressString           OPTIONAL,
+    ms-Classmark2               [17] MS-Classmark2                OPTIONAL,
+    gPRSMSClass                 [18] GPRSMSClass                  OPTIONAL,
+    iMEI                        [19] IMEI                         OPTIONAL,
+    calledPartyNumber           [20] ISDN-AddressString           OPTIONAL
+  }
+
+  releaseSMS OPERATION ::= {
+    ARGUMENT            ReleaseSMSArg
+    RETURN RESULT       FALSE
+    ALWAYS RESPONDS     FALSE
+    CODE                opcode-releaseSMS
+  }
+  --  Direction: gsmSCF -> gsmSSF or gprsSSF, Timer: Trelsms
+  --  This operation is used to prevent an attempt to submit or deliver a short message. 
+  
+  RPCause ::= OCTET STRING (SIZE (1))
+  -- RP cause according to 3GPP TS 24.011 [10] or 3GPP TS 29.002 [11].
+  -- GsmSCF shall send this cause in the ReleaseSMS operation.
+  -- For a MO-SMS service, the MSC or SGSN shall send the RP Cause to the originating MS.
+  -- It shall be used to overwrite the RP-Cause element in the RP-ERROR RPDU.
+  -- For a MT-SMS service, the MSC or SGSN shall send the RP Cause to the sending SMS-GMSC.
+  -- It shall be used to overwrite the RP-Cause element in the RP-ERROR RPDU.
+
+  ReleaseSMSArg ::= RPCause
+
+  SMSEvent ::= SEQUENCE {
+    eventTypeSMS            [0] EventTypeSMS,
+    monitorMode             [1] MonitorMode
+  }
+
+  requestReportSMSEvent OPERATION ::= {
+    ARGUMENT      RequestReportSMSEventArg
+    RETURN RESULT FALSE
+    ERRORS        {missingParameter |
+                  parameterOutOfRange |
+                  systemFailure |
+                  taskRefused |
+                  unexpectedComponentSequence |
+                  unexpectedDataValue |
+                  unexpectedParameter}
+    CODE          opcode-requestReportSMSEvent
+  }
+  --  Direction: gsmSCF -> gsmSSF or gprsSSF, Timer: Trrbsms
+  --  This operation is used to request the gsmSSF or gprsSSF to monitor for a
+  --  Short Message related event (FSM events such as submission, delivery or failure)
+  --  and to send a notification to the gsmSCF when the event is detected.
+  
+  RequestReportSMSEventArg ::= SEQUENCE {
+    sMSEvents               [0]   SEQUENCE SIZE (1..numOfSMSEvents) OF SMSEvent,
+    extensions              [10]  Extensions                  OPTIONAL,
+    ...
+  }
+  --  Indicates the Short Message related events(s) for notification.
+  
+  resetTimerSMS OPERATION ::= {
+    ARGUMENT        ResetTimerSMSArg
+    RETURN RESULT   FALSE
+    ERRORS          {missingParameter |
+                    parameterOutOfRange |
+                    taskRefused |
+                    unexpectedComponentSequence |
+                    unexpectedDataValue |
+                    unexpectedParameter}
+    CODE      opcode-resetTimerSMS
+  }
+  -- Direction: gsmSCF -> smsSSF, Timer: Trtsms 
+  -- This operation is used to request the smsSSF to refresh an application
+  -- timer in the smsSSF.
+  
+  ResetTimerSMSArg ::= SEQUENCE {
+    timerID                 [0] TimerID DEFAULT tssf,
+    timervalue              [1] TimerValue,
+    extensions              [2] Extensions             OPTIONAL,
+    ...
+  }
+
+
+END
