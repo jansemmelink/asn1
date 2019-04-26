@@ -106,9 +106,8 @@ func (AssignmentToken) String() string { return "::=" }
 //Identifier is parsed using a regular expression
 type Identifier string
 
-func (Identifier) Parse(log logger.ILogger, l parser.ILines, v def2.IParsable) (parser.ILines, error) {
-	strPtr := (*string)(v.(*Identifier))
-	return def2.RegexParse(log, l, "[a-zA-Z][a-zA-Z0-9]*", strPtr)
+func (id *Identifier) Parse(log logger.ILogger, l parser.ILines, v def2.IParsable) (parser.ILines, error) {
+	return def2.RegexParse(log, l, "[a-zA-Z][a-zA-Z0-9]*", (*string)(id))
 }
 
 //func (i Identifier) String() string { return i.Value }
