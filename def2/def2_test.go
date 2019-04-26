@@ -13,6 +13,58 @@ import (
 
 var log = logger.New().WithLevel(level.Debug)
 
+func TestToken(t *testing.T) {
+	{
+		l := parser.NewLines()
+		l = l.Append(1, "Name is Jan := Semmelink;", "no comment")
+
+		expectedTokens := []def2.IParsable{
+			def2.NewToken("Name"),
+			def2.NewToken("is"),
+			def2.NewToken("Jan"),
+			def2.NewToken("Kobus"), //<<--- not expected - added to list to ensure we get parse error
+			def2.NewToken(":="),
+			def2.NewToken("Semmelink"),
+			def2.NewToken("end"), //<<--- also not expected
+		}
+		remain := l
+		for i, token := range expectedTokens {
+			var err error
+			remain, err = token.Parse(log, remain, token)
+			if err != nil && i != 3 && i != 6 { //index 3=Kobus and 6=end should fail
+				t.Fatalf("Failed: %v", err)
+			}
+			if err == nil && (i == 3 || i == 6) {
+				t.Fatalf("Failed: %v", err)
+				log.Debugf("  Found token[i]=%s", i, token)
+			} else {
+				log.Debugf("  Expected missing token[i]=%s", i, token)
+			}
+		}
+		log.Debugf("Got all expected tokens")
+	}
+}
+
+func TestRegex(t *testing.T) {
+	//todo
+	return
+}
+
+func TestNumbers(t *testing.T) {
+	//todo
+	return
+}
+
+func TestSeq(t *testing.T) {
+	//todo
+	return
+}
+
+func TestList(t *testing.T) {
+	//todo
+	return
+}
+
 func TestOptional(t *testing.T) {
 	{
 		//optional Name2 present:
@@ -54,7 +106,7 @@ func (x NrNameOptNameNr) String() string {
 	return fmt.Sprintf("%d,%s,%s,%d", x.Nr1, x.Name1, *x.OptName2, x.Nr2)
 }
 
-func Test1(t *testing.T) {
+func TestAll(t *testing.T) {
 	//make some text that can be parsed into a struct with two fields:
 	//the first field's value is "Outside" the second in "Inside"
 	l := parser.NewLines()
