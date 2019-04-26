@@ -37,6 +37,10 @@ func (Seq) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.ILine
 		parsable, ok := temp.Interface().(IParsable)
 		if !ok {
 			log.Debugf("  Field[%d]=%s type=%v is not parsable - ignored", i, structTypeField.Name, fieldValueType)
+			if fieldValueType.Name() == "Identifier" {
+				tryParsable := temp.Interface().(IParsable)
+				tryParsable.Parse(log, l, nil)
+			}
 			continue
 		}
 

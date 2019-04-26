@@ -83,7 +83,7 @@ func Test1(t *testing.T) {
 		log.Debugf("  THREE = %+v", myStruct.Three.Int())
 		log.Debugf("  FOUR  = %+v", myStruct.Four)
 		log.Debugf("  FIVE  = %+v", myStruct.Five)
-		log.Debugf("  I.I   = \"%s\"", myStruct.I.I.Value())
+		log.Debugf("  I.I   = \"%s\"", myStruct.I.I)
 		log.Debugf("  I.V1  = %v", myStruct.I.V1)
 		log.Debugf("  I.V2  = %v", myStruct.I.V2)
 		log.Debugf("Remain: line %d: %.32s ...", remain.LineNr(), remain.Next())
@@ -103,10 +103,15 @@ type AssignmentToken struct{ def2.Token }
 
 func (AssignmentToken) String() string { return "::=" }
 
-//Identifier is a regex type to use for Identifiers:
-type Identifier struct{ def2.Regex }
+//Identifier is parsed using a regular expression
+type Identifier struct{ Value string }
 
-func (Identifier) Pattern() string { return "[a-zA-Z][a-zA-Z0-9]*" }
+func (Identifier) Parse(log logger.ILogger, l parser.ILines, v def2.IParsable) (parser.ILines, error) {
+	i := v.(*Identifier)
+	return def2.RegexParse(log, l, "[a-zA-Z][a-zA-Z0-9]*", &i.Value)
+}
+
+func (i Identifier) String() string { return i.Value }
 
 //this is a parsable sequence struct that inherits a Parse() method from type Seq
 type MyStruct struct {
@@ -157,7 +162,8 @@ type MyStruct struct {
 type InsideBlock struct {
 	def2.Block
 	//I  KeywordInside
-	I  Identifier
+	I Identifier
+	//I def2.Regex
 	V1 def2.Int
 	V2 def2.Int
 }
