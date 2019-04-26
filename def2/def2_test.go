@@ -104,14 +104,14 @@ type AssignmentToken struct{ def2.Token }
 func (AssignmentToken) String() string { return "::=" }
 
 //Identifier is parsed using a regular expression
-type Identifier struct{ Value string }
+type Identifier string
 
 func (Identifier) Parse(log logger.ILogger, l parser.ILines, v def2.IParsable) (parser.ILines, error) {
-	i := v.(*Identifier)
-	return def2.RegexParse(log, l, "[a-zA-Z][a-zA-Z0-9]*", &i.Value)
+	strPtr := (*string)(v.(*Identifier))
+	return def2.RegexParse(log, l, "[a-zA-Z][a-zA-Z0-9]*", strPtr)
 }
 
-func (i Identifier) String() string { return i.Value }
+//func (i Identifier) String() string { return i.Value }
 
 //this is a parsable sequence struct that inherits a Parse() method from type Seq
 type MyStruct struct {
