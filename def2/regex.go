@@ -17,14 +17,17 @@ var (
 //RegexParse function to use for custom regular expressions
 //Example:
 //----------------------------------------------------------------------------------------------------------
-//  //MyItem defines my own IParsable type:
-//	type MyItem = struct { Value string }
-//
-//  //Parse method implements IParsable.Parse()
-//  func (MyItem) Parse(log logger.ILogger, l parser.ILines, v def2.IParsable) (parser.ILines, error) {
-// 	  i := v.(*MyItem)
-// 	  return def2.RegexParse(log, l, "[a-zA-Z][a-zA-Z0-9]*", &i.Value)
+//	type MyItem = string
+//  func (item *MyItem) Parse(log logger.ILogger, l parser.ILines, v def2.IParsable) (parser.ILines, error) {
+// 	  return def2.RegexParse(log, l, "[a-zA-Z][a-zA-Z0-9]*", (*string)(item))
 //  }
+//
+//  type MyParsableStruct struct {
+//		def2.Seq
+//		...
+//		item MyItem				<-- use it for example here in a sequence of parsable things
+//		...
+//	}
 //----------------------------------------------------------------------------------------------------------
 func RegexParse(log logger.ILogger, l parser.ILines, pattern string, value *string) (parser.ILines, error) {
 	compiledMutex.Lock()
