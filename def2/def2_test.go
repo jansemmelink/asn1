@@ -1,6 +1,7 @@
 package def2_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -11,6 +12,47 @@ import (
 )
 
 var log = logger.New().WithLevel(level.Debug)
+
+func TestOptional(t *testing.T) {
+	{
+		//optional Name2 present:
+		l := parser.NewLines()
+		l = l.Append(1, "1234 ABC DEF 5678", "no comment")
+		x := NrNameOptNameNr{}
+		remain, err := x.Parse(log, l, &x)
+		if err != nil || x.Nr1 != 1234 || x.Nr2 != 5678 || x.Name1 != "ABC" || x.OptName2 == nil || *x.OptName2 != "DEF" {
+			t.Fatalf("Failed: x=%s, next=%s, %v", x, remain.Next(), err)
+		}
+	}
+
+	{
+		//optional Name2 absent:
+		l := parser.NewLines()
+		l = l.Append(1, "1234 ABC 5678", "no comment")
+		x := NrNameOptNameNr{}
+		remain, err := x.Parse(log, l, &x)
+		if err != nil || x.Nr1 != 1234 || x.Nr2 != 5678 || x.Name1 != "ABC" || x.OptName2 != nil {
+			t.Fatalf("Failed: x=%s, next=%s, %v", x, remain.Next(), err)
+		}
+	}
+} //TestOptional()
+
+//NrNameOptNameNr is a sequence of:
+//	Nr + Name + Optional Name + Nr
+type NrNameOptNameNr struct {
+	def2.Seq
+	Nr1      def2.Int
+	Name1    Identifier
+	OptName2 *Identifier //use pointer type to make it optional
+	Nr2      def2.Int
+}
+
+func (x NrNameOptNameNr) String() string {
+	if x.OptName2 == nil {
+		return fmt.Sprintf("%d,%s,%s,%d", x.Nr1, x.Name1, "N/A", x.Nr2)
+	}
+	return fmt.Sprintf("%d,%s,%s,%d", x.Nr1, x.Name1, *x.OptName2, x.Nr2)
+}
 
 func Test1(t *testing.T) {
 	//make some text that can be parsed into a struct with two fields:

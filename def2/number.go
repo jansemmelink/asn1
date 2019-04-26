@@ -24,13 +24,14 @@ type Int int
 //Parse ...
 func (i *Int) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.ILines, error) {
 	next := l.Next()
-	posEnd := strings.IndexFunc(next, nrTerm)
+	posEnd := strings.IndexFunc(next+" ", nrTerm) //add " " to terminate after the nr at end of the line
 	if posEnd < 0 || posEnd > 32 {
+		log.Debugf("(next=\"%s\" -> posEnd=%d)", next, posEnd)
 		return l, log.Wrapf(nil, "not a valid number on line %d: %.32s", l.LineNr(), next)
 	}
 	str := next[0:posEnd]
 	if len(str) == 0 {
-		return l, log.Wrapf(nil, "No Int value at line %d: %.32s ...", l.LineNr(), next)
+		return l, log.Wrapf(nil, "no Int value at line %d: %.32s ...", l.LineNr(), next)
 	}
 	//log.Debugf("Parsing int from \"%s\"", str)
 	//spacing not allowed between digits:
@@ -53,8 +54,9 @@ type Uint uint
 //Parse ...
 func (i *Uint) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.ILines, error) {
 	next := l.Next()
-	posEnd := strings.IndexFunc(next, nrTerm)
+	posEnd := strings.IndexFunc(next+" ", nrTerm) //add " " to terminate after the nr at end of the line
 	if posEnd < 0 || posEnd > 32 {
+		log.Debugf("(next=\"%s\" -> posEnd=%d)", next, posEnd)
 		return l, log.Wrapf(nil, "not a valid number on line %d: %.32s", l.LineNr(), next)
 	}
 	str := next[0 : posEnd+1]
