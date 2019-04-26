@@ -21,7 +21,9 @@ type ChoiceSF struct {
 	Name  string
 	Type  reflect.Type
 	Value reflect.Value
-	Ptr   IParsable
+
+	//Ptr   IParsable
+	//Ptr is not safe, when the choice value is copied, it is wrong in the new value
 }
 
 //Parse ...
@@ -70,7 +72,7 @@ func (Choice) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.IL
 				Name:  structTypeField.Name,
 				Type:  structTypeField.Type,
 				Value: reflect.ValueOf(v).Elem().Field(i),
-				Ptr:   reflect.ValueOf(v).Elem().Field(i).Addr().Interface().(IParsable),
+				//Ptr:   reflect.ValueOf(v).Elem().Field(i).Addr().Interface().(IParsable),
 			}
 
 			return remain, nil

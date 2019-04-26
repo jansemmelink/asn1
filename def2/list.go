@@ -106,7 +106,11 @@ func (lst *List) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser
 	//we get the user implementation from argument v:
 	var userList IList
 	userList = reflect.ValueOf(v).Elem().Interface().(IList)
-	log.Debugf("=====[ PARSING LIST %T: sep='%s', min=%d, max=%d, item=%s ]=====", userList, userList.Sep(), userList.Min(), userList.Max(), userList.ItemType().Name())
+	sepStr := ""
+	if userList.Sep() != nil {
+		sepStr = userList.Sep().String()
+	}
+	log.Debugf("=====[ PARSING LIST %T: sep='%s', min=%d, max=%d, item=%s ]=====", userList, sepStr, userList.Min(), userList.Max(), userList.ItemType().Name())
 
 	//start with empty list
 	lst.items = make([]IParsable, 0)
@@ -114,9 +118,9 @@ func (lst *List) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser
 		var err error
 
 		//if not first, expect optional separator before next item
-		if len(lst.items) > 0 && len(userList.Sep().String()) > 0 {
+		if len(lst.items) > 0 && len(sepStr) > 0 {
 			if remain, err = userList.Sep().Parse(log, remain, nil); err != nil {
-				log.Debugf("%T no sep='%s' after item[%d] on line %d: %.32s ...", userList, userList.Sep(), len(lst.items), remain.LineNr(), remain.Next())
+				log.Debugf("%T no sep='%s' after item[%d] on line %d: %.32s ...", userList, sepStr, len(lst.items), remain.LineNr(), remain.Next())
 				break
 			}
 		} //if not first and expects separator between items
@@ -130,8 +134,8 @@ func (lst *List) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser
 			//but if list has a separator, and we got it (count>0), then this
 			//is an error because the list ended with a separator but no item
 			//following it.
-			if len(lst.items) > 0 && len(userList.Sep().String()) > 0 {
-				return l, log.Wrapf(nil, "%T.item[%d] not found after sep='%s' on line %d: %.32s ...", userList, len(lst.items), userList.Sep(), remain.LineNr(), remain.Next())
+			if len(lst.items) > 0 && len(sepStr) > 0 {
+				return l, log.Wrapf(nil, "%T.item[%d] not found after sep='%s' on line %d: %.32s ...", userList, len(lst.items), sepStr, remain.LineNr(), remain.Next())
 			}
 			log.Debugf("Could not parse %T.item[%d] from %d: %.32s ...", userList, len(lst.items), remain.LineNr(), remain.Next())
 			break

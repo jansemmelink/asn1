@@ -59,7 +59,7 @@ func (i *Uint) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.I
 		log.Debugf("(next=\"%s\" -> posEnd=%d)", next, posEnd)
 		return l, log.Wrapf(nil, "not a valid number on line %d: %.32s", l.LineNr(), next)
 	}
-	str := next[0 : posEnd+1]
+	str := next[0:posEnd]
 	if len(str) == 0 {
 		return l, log.Wrapf(nil, "No Uint value at line %d: %.32s ...", l.LineNr(), next)
 	}

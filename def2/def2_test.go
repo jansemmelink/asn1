@@ -60,11 +60,6 @@ func TestSeq(t *testing.T) {
 	return
 }
 
-func TestList(t *testing.T) {
-	//todo
-	return
-}
-
 func TestOptional(t *testing.T) {
 	{
 		//optional Name2 present:
@@ -152,12 +147,13 @@ func TestAll(t *testing.T) {
 			}
 
 			//using a union member by name
-			switch u.Choice.Option().Ptr {
-			case &u.Two:
-				log.Debugf("  TWO = %v", u.Two)
-			default:
-				log.Errorf("Cannot log %+v", u.Choice.Option())
-			}
+			//REMOVED because not safe after copying the value of the choice struct
+			// switch u.Choice.Option().Ptr {
+			// case &u.Two:
+			// 	log.Debugf("  TWO = %v", u.Two)
+			// default:
+			// 	log.Errorf("Cannot log %+v", u.Choice.Option())
+			// }
 		}
 
 		log.Debugf("Remain: line %d: %.32s ...", remain.LineNr(), remain.Next())

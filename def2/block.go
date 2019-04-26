@@ -34,26 +34,27 @@ func (b Block) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.I
 	remain := l
 	//structType := reflect.TypeOf(v).Elem()
 
-	var b1 IBlock
-	b1 = reflect.ValueOf(v).Elem().Interface().(IBlock)
+	var userBlock IBlock
+	userBlock = reflect.ValueOf(v).Elem().Interface().(IBlock)
 	//log.Debugf("=====[ PARSING BLOCK %T: %s .. %s ]=====", b, b.Start(), b.End())   <<<< default block values not used
-	log.Debugf("=====[ PARSING BLOCK %T: %s .. %s ]=====", b1, b1.Start(), b1.End())
+	log.Debugf("=====[ PARSING BLOCK %T: %s .. %s ]=====", userBlock, userBlock.Start(), userBlock.End())
 
 	//skip over start token
 	var err error
-	if remain, err = b1.Start().Parse(log, remain, nil); err != nil {
-		return l, log.Wrapf(nil, "%T%s...%s start token not found in line %d: %.32s ...", b1, b1.Start(), b1.End(), remain.LineNr(), remain.Next())
+	if remain, err = userBlock.Start().Parse(log, remain, nil); err != nil {
+		return l, log.Wrapf(nil, "%T%s...%s start token not found in line %d: %.32s ...", userBlock, userBlock.Start(), userBlock.End(), remain.LineNr(), remain.Next())
 	}
 
 	//parse contents the same way we parse any other struct as a Seq
 	if remain, err = b.Seq.Parse(log, remain, v); err != nil {
-		return l, log.Wrapf(err, "Failed to parse %T%s..%s contents from %d: %.32s ...", b1, b1.Start(), b1.End(), remain.LineNr(), remain.Next())
+		return l, log.Wrapf(err, "Failed to parse %T%s..%s contents from %d: %.32s ...", userBlock, userBlock.Start(), userBlock.End(), remain.LineNr(), remain.Next())
 	}
 
 	//skip over end token
-	if remain, err = b1.End().Parse(log, remain, nil); err != nil {
-		return l, log.Wrapf(nil, "%T%s...%s end token not found in line %d: %.32s ...", b1, b1.Start(), b1.End(), remain.LineNr(), remain.Next())
+	if remain, err = userBlock.End().Parse(log, remain, nil); err != nil {
+		return l, log.Wrapf(nil, "%T%s...%s end token not found in line %d: %.32s ...", userBlock, userBlock.Start(), userBlock.End(), remain.LineNr(), remain.Next())
 	}
 
+	log.Debugf("Parsed %T%s...%s", userBlock, userBlock.Start(), userBlock.End())
 	return remain, nil
 } //Block.Parse()
