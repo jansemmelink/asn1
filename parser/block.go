@@ -1,13 +1,16 @@
 package parser
 
+import "bitbucket.org/vservices/dark/logger"
+
 //Block creates a parser for something between a start and end terminator
 func Block(name string, start, end string, inside INotation) IBlock {
-	return block{
-		INotation:      New(name),
-		start:          start,
-		end:            end,
-		expectedInside: inside,
+	b := &block{
+		INotation: New("block", name),
+		start:     start,
+		end:       end,
 	}
+	b.expectedInside = inside
+	return b
 }
 
 //IBlock enclodes between a start and end terminator, e.g. "{...}" or "begin...end"
@@ -29,19 +32,19 @@ func (b block) Item() INotation {
 	return b.item
 }
 
-func (b block) Parse(l ILines) (INotation, ILines, error) {
+func (b block) ParseV(log logger.ILogger, l ILines) (IValue, ILines, error) {
 	remain, ok := l.SkipOver(b.start)
 	if !ok {
 		return nil, l, log.Wrapf(nil, "Line %d: block %s...%s start token not present in line %d: %.32s", l.LineNr(), b.start, b.end, l.LineNr(), l.Next())
 	}
 	var err error
-	if b.item, remain, err = b.expectedInside.Parse(remain); err != nil {
+	var parsedValue IValue
+	if parsedValue, remain, err = b.expectedInside.ParseV(log.With("block(%s)", b.Name()), remain); err != nil {
 		return nil, l, log.Wrapf(err, "Line %d: block %s..%s content not valid", l.LineNr(), b.start, b.end)
 	}
 	remain, ok = remain.SkipOver(b.end)
 	if !ok {
 		return nil, l, log.Wrapf(nil, "block(%s) %s...%s started on line %d: end token expected on line %d: %.32s", b.Name(), b.start, b.end, l.LineNr(), remain.LineNr(), remain.Next())
 	}
-	log.Debugf("block(%s) %s <%T> %s parsed on line %d, next line %d: %.32s", b.Name(), b.start, b.expectedInside, b.end, l.LineNr(), remain.LineNr(), remain.Next())
-	return b, remain, nil
-} //block.Parse()
+	return parsedValue, remain, nil
+} //block.ParseV()

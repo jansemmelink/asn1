@@ -3,6 +3,8 @@ package parser
 import (
 	"regexp"
 	"strings"
+
+	"bitbucket.org/vservices/dark/logger"
 )
 
 //Regex creates a regex parser
@@ -11,32 +13,29 @@ func Regex(name, pattern string) IRegex {
 	if err != nil {
 		panic(log.Wrapf(err, "Invalid regular expression pattern: %s", pattern))
 	}
-	return regex{
-		INotation:     New(name),
+
+	r := &regex{
+		INotation:     New("regex", name),
 		patternString: pattern,
 		pattern:       compiled,
 	}
-
+	log.Debugf("%p(regex) = %s", r, r.Name())
+	return r
 }
 
 //IRegex matches a regular expression
 type IRegex interface {
 	INotation
-	Match() string
 }
 
 type regex struct {
 	INotation
 	patternString string
 	pattern       *regexp.Regexp
-	match         string
 }
 
-func (r regex) Match() string {
-	return r.match
-}
-
-func (r regex) Parse(l ILines) (INotation, ILines, error) {
+func (r regex) ParseV(log logger.ILogger, l ILines) (IValue, ILines, error) {
+	log.Debugf("%T(%s).Parse() from line %d: %.32s ...", r, r.Name(), l.LineNr(), l.Next())
 	//get first match
 	next := l.Next()
 	matches := r.pattern.FindAllString(next, 1)
@@ -46,9 +45,9 @@ func (r regex) Parse(l ILines) (INotation, ILines, error) {
 		//we only consider the first match
 		//in which case SkipOver() will fail
 		if remain, ok := l.SkipOver(matches[0]); ok {
-			r.match = strings.TrimRight(matches[0], " \t")
-			log.Debugf("regex(%s) parsed \"%s\" on line %d, next line %d: %.32s", r.Name(), r.match, l.LineNr(), remain.LineNr(), remain.Next())
-			return r, remain, nil
+			match := strings.TrimRight(matches[0], " \t")
+			log.Debugf("regex(%s) parsed \"%s\" on line %d, next line %d: %.32s", r.Name(), match, l.LineNr(), remain.LineNr(), remain.Next())
+			return StrValue(r.Name(), match), remain, nil
 		}
 	}
 	return nil, l, log.Wrapf(nil, "regex(%s) mismatch line %d: %.32s", r.patternString, l.LineNr(), next)

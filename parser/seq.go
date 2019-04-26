@@ -1,60 +1,52 @@
 package parser
 
 import (
-	"fmt"
+	"bitbucket.org/vservices/dark/logger"
 )
 
-//Seq creates a sequence parser
+//Seq creates a sequence of consecutive items to parse
 func Seq(name string, items ...INotation) ISeq {
 	if len(items) == 0 {
 		panic("empty sequence")
 	}
-
-	logDesc := ""
-	for _, i := range items {
-		logDesc += fmt.Sprintf(" %T", i)
+	s := &seq{
+		INotation:     New("seq", name),
+		expectedItems: make([]INotation, 0),
 	}
-
-	return seq{
-		INotation:     New(name),
-		expectedItems: items,
-		logDesc:       logDesc[1:],
+	for index, i := range items {
+		s.expectedItems = append(s.expectedItems, i)
+		log.Debugf("%p(%s)[%d]=%p(%s)", s, s.Name(), index, i, i.Name())
 	}
+	return s
 }
 
 //ISeq of items
 type ISeq interface {
 	INotation
-	Items() []INotation
 }
 
 type seq struct {
 	INotation
 	expectedItems []INotation
-	logDesc       string
-
-	items []INotation
 }
 
-func (s seq) Parse(l ILines) (INotation, ILines, error) {
-	s.items = make([]INotation, 0)
+func (s seq) ParseV(log logger.ILogger, l ILines) (IValue, ILines, error) {
+	log = log.With("seq(%s)", s.Name())
+	log.Debugf("line %d: %.32s ...", l.LineNr(), l.Next())
+
+	parsedSeq := ListValue(s.Name())
 	remain := l
-	//log.Debugf("seq(%s) %d items from all=%.32s", s.Name(), len(s.expectedItems), l.Next())
 	for i, e := range s.expectedItems {
-		//log.Debugf("seq(%s)[%d].%s from r=%.32s all=%.32s", s.Name(), i, e.Name(), remain.Next(), l.Next())
 		var err error
-		var parsedItem INotation
-		parsedItem, remain, err = e.Parse(remain)
+		var parsedValue IValue
+		parsedValue, remain, err = e.ParseV(log.With("[%d]", i), remain)
 		if err != nil {
 			return nil, l, log.Wrapf(err, "seq(%s)[%d].%s failed on line %d: %s", s.Name(), i, e.Name(), l.LineNr(), l.Next())
 		}
-		s.items = append(s.items, parsedItem)
+		parsedSeq = parsedSeq.With(parsedValue)
 		log.Debugf("  seq(%s)[%d]=%s parsed, next is line %d: %.32s", s.Name(), i, e.Name(), remain.LineNr(), remain.Next())
 	}
-	log.Debugf("seq(%s)={%s} parsed on line %d, next is line %d: %.32s", s.Name(), s.logDesc, l.LineNr(), remain.LineNr(), remain.Next())
-	return s, remain, nil
-} //seq.Parse()
+	log.Debugf("seq(%s) parsed on line %d, next is line %d: %.32s", s.Name(), l.LineNr(), remain.LineNr(), remain.Next())
+	return parsedSeq, remain, nil
+} //seq.ParseV()
 
-func (s seq) Items() []INotation {
-	return s.items
-}

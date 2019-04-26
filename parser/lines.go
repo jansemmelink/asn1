@@ -38,7 +38,7 @@ func (l lines) Count() int {
 }
 
 func (l lines) Append(nr int, text string, comment string) ILines {
-	l.array = append(l.array, line{nr: nr, text: text, comment: comment})
+	l.array = append(l.array, line{nr: nr, text: strings.Trim(text, " \t"), comment: comment})
 	return l
 }
 
@@ -78,7 +78,7 @@ func (l lines) SkipOver(s string) (ILines, bool) {
 	if sl == 0 {
 		//nothing to skip
 		log.Debugf("NOTHING TO SKIP")
-		return l, true
+		return l, false
 	}
 
 	if len(l.array) == 0 {
@@ -104,17 +104,28 @@ func (l lines) SkipOver(s string) (ILines, bool) {
 
 	//skipped
 	//warning: do not modify array elements in object
-	//it will change the object eventhough its suppose to be const!
+	//it will change the object even though its suppose to be const!
 	//first make a copy, apply the change, then return the copy
 	//we only need to change the specified item in the array
 	//and we also drop all empty lines at the top
 	c := lines{array: make([]ILine, 0)}
 	if len(modifiedLine.Text()) > 0 {
+		//some text remain in the modifier line, start with this
 		c.array = append(c.array, modifiedLine)
+	} else {
+		//modified line emptied, start with next line but trim leading spaces
+		//log.Debugf("Modified emptied: i=%d len(array)=%d", i, len(l.array))
+		if i < len(l.array)-1 {
+			nextLine, _ := l.array[i+1].SkipOver("")
+			c.array = append(c.array, nextLine)
+			i++
+		}
 	}
-	c.array = append(c.array, l.array[i+1:]...)
+	if i < len(l.array) {
+		c.array = append(c.array, l.array[i+1:]...)
+	}
 
-	log.Debugf("SKIPPED(%s): next %5d:%s", s, c.LineNr(), c.Next())
+	//log.Debugf("SKIPPED(%s): next %5d:%s", s, c.LineNr(), c.Next())
 	// log.Debugf("  SRC(#=%5d): %5d:%s", len(l.array), l.array[0].Nr(), l.array[0].Text())
 	// log.Debugf("  DST(#=%5d): %5d:%s", len(c.array), c.array[0].Nr(), c.array[0].Text())
 	return c, true
@@ -151,23 +162,20 @@ func (l line) Comment() string {
 
 func (l line) SkipOver(s string) (ILine, bool) {
 	sl := len(s)
-	if sl == 0 {
-		//nothing to skip over
-		return l, true
-	}
+	if sl > 0 {
+		tl := len(l.text)
+		if tl < sl {
+			//not enough text to skip
+			return l, false
+		}
 
-	tl := len(l.text)
-	if tl < sl {
-		//not enough text to skip
-		return l, false
-	}
+		if l.text[0:sl] != s {
+			//no match
+			return l, false
+		}
+	} //if has text to skip
 
-	if l.text[0:sl] != s {
-		//no match
-		return l, false
-	}
-
-	//skip over and trim spaces after the token
+	//skip over (even over "") and trim spaces after the token
 	l.text = strings.TrimLeft(l.text[sl:], " \t")
 	return l, true
 }

@@ -1,53 +1,48 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+
+	"bitbucket.org/vservices/dark/logger"
+)
 
 //List creates a parser for a list of the same types of items
 func List(sep string, min int, item INotation) IList {
-	return list{
-		INotation:    New(fmt.Sprintf("list of %s", item.Name())),
-		sep:          sep,
-		min:          min,
-		expectedItem: item,
-		items:        nil,
+	name := fmt.Sprintf("list of %s", item.Name())
+	lst := &list{
+		INotation: New("list", name),
+		sep:       sep,
+		min:       min,
 	}
+	lst.expectedItem = item
+	return lst
 }
 
 //IList extends INotation
 type IList interface {
 	INotation
-	Items() []INotation
 }
 
 //list implements IList
 type list struct {
 	INotation
-	//specification
 	sep          string
 	min          int
 	expectedItem INotation
-	//output
-	items []INotation
 }
 
-func (lst list) Items() []INotation {
-	return lst.items
-}
-
-func (lst list) Parse(l ILines) (INotation, ILines, error) {
-	lst.items = make([]INotation, 0)
+func (lst list) ParseV(log logger.ILogger, l ILines) (IValue, ILines, error) {
 	remain := l
-	//log.Debugf("list(%s): Start from line %d: %.32s", lst.Name(), remain.LineNr(), remain.Next())
+	parsedList := ListValue(lst.Name())
+	var err error
 	for {
-		//log.Debugf("  list(%s).item[%d] from: %.32s", lst.Name(), len(lst.items), remain.Next())
 		//get next item
-		var err error
-		var parsedItem INotation
-		if parsedItem, remain, err = lst.expectedItem.Parse(remain); err != nil {
+		var parsedValue IValue
+		if parsedValue, remain, err = lst.expectedItem.ParseV(log.With("list(%s)", lst.Name()), remain); err != nil {
 			break
 		}
-		lst.items = append(lst.items, parsedItem)
-		log.Debugf("list(%s) now has %d items, next=%s", lst.Name(), len(lst.items), remain.Next())
+		parsedList = parsedList.With(parsedValue)
+		log.Debugf("list(%s) now has %d items, next=%s", lst.Name(), len(parsedList.Items()), remain.Next())
 
 		//needs separater before allowing another item
 		//space separators are implicit, so do not check
@@ -62,9 +57,9 @@ func (lst list) Parse(l ILines) (INotation, ILines, error) {
 		}
 	}
 
-	if len(lst.items) < lst.min {
-		return nil, l, log.Wrapf(nil, "list(%s) has %d items < min=%d", lst.Name(), len(lst.items), lst.min)
+	if len(parsedList.Items()) < lst.min {
+		return nil, l, log.Wrapf(err, "list(%s) has %d items < min=%d", lst.Name(), len(parsedList.Items()), lst.min)
 	}
-	log.Debugf("list(%s) parsed %d items from line %d, next line %d: %.32s", lst.Name(), len(lst.items), l.LineNr(), remain.LineNr(), remain.Next())
-	return lst, remain, nil
-} //list.Parse()
+	log.Debugf("list(%s) parsed %d items from line %d, next line %d: %.32s", lst.Name(), len(parsedList.Items()), l.LineNr(), remain.LineNr(), remain.Next())
+	return parsedList, remain, nil
+} //list.ParseV()

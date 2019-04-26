@@ -1,46 +1,45 @@
 package parser
 
-import "fmt"
+import (
+	"bitbucket.org/vservices/dark/logger"
+)
 
 //Optional creates a parser that detects presents of an item
 func Optional(item INotation) IOptional {
-	return optional{
-		INotation:    New(fmt.Sprintf("Optional %s", item.Name())),
-		expectedItem: item,
-		item:         nil,
+	name := item.Name()
+	if len(name) == 0 {
+		panic("Optional without name")
 	}
+	o := &optional{
+		INotation: New("optional", name),
+	}
+	o.expectedItem = item
+	return o
 }
 
 //IOptional extends INotation
 type IOptional interface {
 	INotation
-
-	//Item returns the parsed item if present or nil if absent
-	Item() INotation
 }
 
 //optional implements IOptional
 type optional struct {
 	INotation
 	expectedItem INotation
-	item         INotation
 }
 
-func (o optional) Item() INotation {
-	return o.item
-}
-
-func (o optional) Parse(l ILines) (INotation, ILines, error) {
+func (o optional) ParseV(log logger.ILogger, l ILines) (IValue, ILines, error) {
+	log.Debugf("%T(%s).Parse() from line %d: %.32s ...", o, o.Name(), l.LineNr(), l.Next())
 	var err error
 	var remain ILines
-	o.item, remain, err = o.expectedItem.Parse(l)
+	var parsedValue IValue
+	parsedValue, remain, err = o.expectedItem.ParseV(log.With("opt(%s)", o.Name()), l)
 	if err == nil {
 		log.Debugf("optional(%s) parsed on line %d, next is line %d: %.32s", o.expectedItem.Name(), l.LineNr(), remain.LineNr(), remain.Next())
-		return o, remain, nil
+		return parsedValue, remain, nil
 	}
 
 	//absent: not an error!
 	log.Debugf("optional(%s) is absent on line %d: %.32s", o.expectedItem.Name(), l.LineNr(), l.Next())
-	o.item = nil
-	return o, l, nil
+	return nil, l, nil
 } //optional.Parse()

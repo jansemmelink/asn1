@@ -1,0 +1,12 @@
+--Test 1: Just basic single ModuleDefinition
+
+MAP-DialogueInformation { one two (2) three (3) }
+DEFINITIONS
+IMPLICIT TAGS
+::=
+BEGIN
+EXPORTS oneOid, TwoChoice;
+IMPORTS extNetworkId, extAsId FROM MyModuleReference { one (1) two (2) };
+oneOid OBJECT IDENTIFIER ::= {extNetworkId extAsId someNr (2) ver (4)}
+TwoChoice ::= CHOICE { map-open [0] MAP-OpenInfo, map-accept [1] MAP-AcceptInfo }
+END

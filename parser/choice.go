@@ -1,48 +1,49 @@
 package parser
 
+import (
+	"bitbucket.org/vservices/dark/logger"
+)
+
 //Choice creates a parser that succeeds on any of the specified notations
 func Choice(name string, options ...INotation) IChoice {
-	return choice{
-		INotation: New(name),
-		options:   options,
+	c := &choice{
+		INotation: New("choice", name),
+		options:   make([]INotation, 0),
 	}
+	for _, o := range options {
+		c.options = append(c.options, o)
+	}
+	return c
 }
 
 //IChoice extends INotation
 type IChoice interface {
 	INotation
-	ItemType() INotation
-	Item() INotation
+	Add(INotation) IChoice
 }
 
 //choice implements IChoice
 type choice struct {
 	INotation
-	//specification
 	options []INotation
-
-	//output
-	itemType INotation
-	item     INotation
 }
 
-func (c choice) ItemType() INotation {
-	return c.itemType
+func (c *choice) Add(item INotation) IChoice {
+	// choicesMutex.Lock()
+	// defer choicesMutex.Unlock()
+	c.options = append(c.options, item)
+	//	choices[c.Name()] = c
+	return c
 }
 
-func (c choice) Item() INotation {
-	return c.item
-}
-
-func (c choice) Parse(l ILines) (INotation, ILines, error) {
-	//log.Debugf("choice(%s): Start from line %d: %.32s", c.Name(), l.LineNr(), l.Next())
-	for i, o := range c.options {
+func (c choice) ParseV(log logger.ILogger, l ILines) (IValue, ILines, error) {
+	for _, o := range c.options {
 		var err error
 		remain := l
-		if c.item, remain, err = o.Parse(remain); err == nil {
-			log.Debugf("choice(%s).[%d]=%s parsed on line %d, next is line %d: %.32s", c.Name(), i, o.Name(), l.LineNr(), remain.LineNr(), remain.Next())
-			return c, remain, nil
+		var parsedValue IValue
+		if parsedValue, remain, err = o.ParseV(log, remain); err == nil {
+			return parsedValue, remain, nil
 		}
 	}
-	return nil, l, log.Wrapf(nil, "choice(%s) failed on line %d: %.32s", c.Name(), l.LineNr(), l.Next())
+	return nil, l, log.Wrapf(nil, "failed")
 } //choice.Parse()
