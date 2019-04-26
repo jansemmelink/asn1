@@ -5,6 +5,7 @@ import (
 
 	"bitbucket.org/vservices/dark/logger"
 	"github.com/jansemmelink/asn1/parser"
+	"github.com/jansemmelink/mem"
 )
 
 //Choice parses until one of the struct members succeeds
@@ -45,8 +46,7 @@ func (Choice) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.IL
 			fieldValueType = fieldValueType.Elem()
 		}
 
-		temp := reflect.New(fieldValueType)
-		if parsable, ok := temp.Interface().(IParsable); ok {
+		if parsable, ok := mem.NewX(fieldValueType).(IParsable); ok {
 			remain, err := parsable.Parse(log, l, parsable)
 			if err != nil {
 				//parsing failed - try another option
@@ -57,9 +57,9 @@ func (Choice) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.IL
 			//this option parsed successfully
 			//no need to continue
 			if structTypeField.Type.Kind() == reflect.Ptr {
-				reflect.ValueOf(v).Elem().Field(i).Set(temp)
+				reflect.ValueOf(v).Elem().Field(i).Set(reflect.ValueOf(parsable))
 			} else {
-				reflect.ValueOf(v).Elem().Field(i).Set(temp.Elem())
+				reflect.ValueOf(v).Elem().Field(i).Set(reflect.ValueOf(parsable).Elem())
 			}
 
 			//indicate the choice selection
@@ -74,7 +74,6 @@ func (Choice) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.IL
 			}
 
 			return remain, nil
-
 		} //if parsable option in the choice
 	} //for each field
 	return l, log.Wrapf(nil, "%v none of the options matched in line %d: %.32s ...", structType.Name(), l.LineNr(), l.Next())

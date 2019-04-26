@@ -12,13 +12,14 @@ type IParsable interface {
 	Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.ILines, error)
 }
 
+//ParsableInterfaceType ...
 //==============================================================
 //to get an interface type in a variable that one
 //can use in SomeOtherType.Implements(interfaceType), use this pattern:
 //==============================================================
 //	interfaceType = reflect.TypeOf((*IMyInterface)(nil)).Elem(IMyInterface)
 //==============================================================
-//var ParsableInterfaceType = reflect.TypeOf((*IParsable)(nil)).Elem()
+var ParsableInterfaceType = reflect.TypeOf((*IParsable)(nil)).Elem()
 
 //Parse into a parsable variable
 func Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.ILines, error) {

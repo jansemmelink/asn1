@@ -35,6 +35,8 @@ github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T
 github.com/hashicorp/raft v1.0.0/go.mod h1:DVSAWItjLjTOkVbSpWQ0j0kUADIvDaCtBxIcbNAQLkI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/jansemmelink/flags v0.0.0-20180920101421-7ecffc854971/go.mod h1:EsKO4+vW5X1/R8FKZ07RKMXafQsczfrkZ97DyY8PRqE=
+github.com/jansemmelink/mem v0.0.0-20190426083127-0aa43b7d7f2f h1:Uz6NPHIQSuEH0daY0gy388oCZDsa+Zl758XfWImo07k=
+github.com/jansemmelink/mem v0.0.0-20190426083127-0aa43b7d7f2f/go.mod h1:JsbCDpvBI+3UHhPgmJQ5cUujjixEflCQEBZ66y2rMmE=
 github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869/go.mod h1:cJ6Cj7dQo+O6GJNiMx+Pa94qKj+TG8ONdKHgMNIyyag=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=

@@ -5,6 +5,7 @@ import (
 
 	"bitbucket.org/vservices/dark/logger"
 	"github.com/jansemmelink/asn1/parser"
+	"github.com/jansemmelink/mem"
 )
 
 //Seq is a sequence of parsable fields
@@ -18,7 +19,7 @@ func (Seq) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.ILine
 	for i := 0; i < structType.NumField(); i++ {
 		structTypeField := structType.Field(i)
 		if structTypeField.Anonymous {
-			//log.Debugf("  Field[%d]=%s is embedded - ignored", i, structTypeField.Name)
+			//log.Debugf("  %s.Field[%d]=%s is embedded - ignored", structType.Name(), i, structTypeField.Name)
 			continue
 		}
 		if !reflect.ValueOf(v).Elem().Field(i).CanSet() {
@@ -33,26 +34,24 @@ func (Seq) Parse(log logger.ILogger, l parser.ILines, v IParsable) (parser.ILine
 			fieldValueType = fieldValueType.Elem()
 		}
 
-		temp := reflect.New(fieldValueType)
-		parsable, ok := temp.Interface().(IParsable)
+		parsable, ok := mem.NewX(fieldValueType).(IParsable)
 		if !ok {
-			log.Debugf("  Field[%d]=%s type=%v is not parsable - ignored", i, structTypeField.Name, fieldValueType)
-			if fieldValueType.Name() == "Identifier" {
-				tryParsable := temp.Interface().(IParsable)
-				tryParsable.Parse(log, l, nil)
-			}
+			//log.Debugf("  Field[%d]=%s type=%v is not parsable - ignored", i, structTypeField.Name, fieldValueType)
 			continue
 		}
 
+		//log.Debugf("  Field[%d]=%s type=%v parsing ...", i, structTypeField.Name, fieldValueType)
 		var err error
 		remain, err = parsable.Parse(log, remain, parsable)
 		if err != nil {
 			return l, log.Wrapf(err, "Failed to parse %s.%s from line %d: %.32s ...", structType.Name(), structTypeField.Name, remain.LineNr(), remain.Next())
 		}
 		if structTypeField.Type.Kind() == reflect.Ptr {
-			reflect.ValueOf(v).Elem().Field(i).Set(temp)
+			//log.Debugf("  Field[%d]=%s type=%v set ptr ...", i, structTypeField.Name, fieldValueType)
+			reflect.ValueOf(v).Elem().Field(i).Set(reflect.ValueOf(parsable))
 		} else {
-			reflect.ValueOf(v).Elem().Field(i).Set(temp.Elem())
+			//log.Debugf("  Field[%d]=%s type=%v set value ...", i, structTypeField.Name, fieldValueType)
+			reflect.ValueOf(v).Elem().Field(i).Set(reflect.ValueOf(parsable).Elem())
 		}
 	} //for each field
 	return remain, nil

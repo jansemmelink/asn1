@@ -20,12 +20,12 @@ type Block struct {
 }
 
 //Start ...
-func (b Block) Start() IToken {
+func (Block) Start() IToken {
 	return NewToken("") //will panic
 }
 
 //End ...
-func (b Block) End() IToken {
+func (Block) End() IToken {
 	return NewToken("") //will panic
 }
 

@@ -1,6 +1,7 @@
 package def2_test
 
 import (
+	"reflect"
 	"testing"
 
 	"bitbucket.org/vservices/dark/logger"
@@ -15,7 +16,7 @@ func Test1(t *testing.T) {
 	//make some text that can be parsed into a struct with two fields:
 	//the first field's value is "Outside" the second in "Inside"
 	l := parser.NewLines()
-	l = l.Append(1, "1234 -456 789 101112 -8 7 Before ::= outside [ Inside 543 55]", "no comment")
+	l = l.Append(1, "1234 -456 789 101112 -8 7 Before ::= outside [ Inside 543 55] n1,n2,n3", "no comment")
 
 	//the schema to parse that is a sequence of one word followed by a {...} block containing another word
 	//which should result in struct with fields One=Outside and Two=Inside
@@ -86,6 +87,8 @@ func Test1(t *testing.T) {
 		log.Debugf("  I.I   = \"%s\"", myStruct.I.I)
 		log.Debugf("  I.V1  = %v", myStruct.I.V1)
 		log.Debugf("  I.V2  = %v", myStruct.I.V2)
+		log.Debugf("  NL    = %+v", myStruct.NL)
+		log.Debugf("  NL.#  = %d", len(myStruct.NL.Items()))
 		log.Debugf("Remain: line %d: %.32s ...", remain.LineNr(), remain.Next())
 	} //scope for seq
 }
@@ -155,6 +158,38 @@ type MyStruct struct {
 
 	//block in braces: {...}
 	I InsideBlock
+
+	//list of items
+	NL NameList
+}
+
+type CSV struct {
+	*def2.List
+}
+
+func (csv CSV) Sep() def2.IToken {
+	return def2.NewToken(",")
+}
+
+type NameList struct {
+	*CSV
+}
+
+// func (NameList) Sep() def2.IToken {
+// 	return def2.NewToken(",")
+// }
+
+func (NameList) Min() int {
+	return 1
+}
+
+func (NameList) Max() int {
+	return 10
+}
+
+func (NameList) ItemType() reflect.Type {
+	var name Identifier
+	return reflect.TypeOf(name)
 }
 
 //InsideBlock defines our own block start..end notation:
